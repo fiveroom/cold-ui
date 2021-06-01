@@ -14,7 +14,7 @@ export default {
 </script>
 
 <style scoped>
-        .x-button {
+    .x-button {
       display: inline-block;
       padding: 3px 6px;
       background: #000;
