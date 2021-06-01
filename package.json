@@ -1,10 +1,11 @@
 {
-  "name": "cold-ui",
+  "name": "cold-ui-vue",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build"
+    "build": "vue-cli-service build",
+    "lib": "vue-cli-service build --target lib --name cold-ui --dest lib packages/index.js"
   },
   "dependencies": {
     "core-js": "^3.6.5",
