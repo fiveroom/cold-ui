@@ -18,25 +18,26 @@ export default {
     props: {
 
     },
+    data(){
+      return {
+          xStand: {
+              top: 0,
+              display: "none",
+          },
+          yStand: {
+              left: 0,
+              display: "none",
+          },
+      }
+    },
+    updated() {
+    },
     mounted() {
         console.log(' :>> ', this.$slots);
     },
     comments: {
         ResizeBox
     },
-    // render(h, context) {
-    //
-    //     return (
-    //         <div class="co-re_page-home">
-    //             <div
-    //                 class="co-re_page-stand co-re_page-stand-x"
-    //             ></div>
-    //             <div
-    //                 class="co-re_page-stand co-re_page-stand-y"
-    //             ></div>
-    //         </div>
-    //     )
-    // }
 }
 </script>
 
@@ -47,12 +48,16 @@ $name: 're_page';
 .#{$prefix}-#{$name}-home{
     width: 100%;
     height: 100%;
+    position: relative;
+    z-index: 0;
 }
 
 .#{$prefix}-#{$name}-stand {
     position: absolute;
     z-index: 99;
     transform-origin: 0 0;
+    top: 0;
+    left: 0;
     &-x {
         height: 0;
         width: 100%;

@@ -1,24 +1,48 @@
 <template>
+
+<div>
+    <button @click="addBox">add</button>
+    <button @click="setD">set Data</button>
+
     <div id="app">
-        <CoRePage>
-            123
-            <CoReBox v-for="i in boxArr" v-bind.sync="i"></CoReBox>
-        </CoRePage>
+                    <CoReBox ref="CoReBox"  v-bind.sync="dataT"></CoReBox>
+
+        <!--        <CoRePage>-->
+<!--            <CoReBox v-for="(i, ind) in boxArr" :key="ind" v-bind.sync="i"></CoReBox>-->
+<!--        </CoRePage>-->
 
         <!--        <ResizeBox style="background-color: red"></ResizeBox>-->
 
     </div>
+</div>
 </template>
 
 <script>
+import HelloWorld from "./components/HelloWorld";
 
 export default {
     name: 'App',
     components: {
+        HelloWorld
     },
     data(){
         return {
-            boxArr: []
+            boxArr: [],
+            dataT: {       width: 100,
+                height: 100,
+                left: 0,
+                top: 0}
+        }
+    },
+    methods:{
+        addBox(){
+            this.boxArr.push({       width: 100,
+                height: 100,
+                left: 0,
+                top: 0})
+        },
+        setD(){
+            this.$refs.CoReBox.setDataM(+new Date())
         }
     },
     created() {
