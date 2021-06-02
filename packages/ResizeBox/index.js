@@ -1,9 +1,9 @@
 // 导入组件，组件必须声明 name
-import ColdResizeBox from './src'
+import CoReBox from './src'
 
 // 为组件提供 install 安装方法，供按需引入
-ColdResizeBox.install = function (Vue) {
-  Vue.component(ColdResizeBox.name, ColdResizeBox)
+CoReBox.install = function (Vue) {
+  Vue.component(CoReBox.name, CoReBox)
 }
 
-export default ColdResizeBox
+export default CoReBox
