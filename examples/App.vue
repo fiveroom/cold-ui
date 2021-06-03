@@ -3,13 +3,13 @@
 <div>
     <button @click="addBox">add</button>
     <button @click="setD">set Data</button>
-
+<HelloWorld></HelloWorld>
     <div id="app">
-                    <CoReBox ref="CoReBox"  v-bind.sync="dataT"></CoReBox>
+<!--  <CoReBox ref="CoReBox"  v-bind.sync="dataT"></CoReBox> -->
 
-        <!--        <CoRePage>-->
-<!--            <CoReBox v-for="(i, ind) in boxArr" :key="ind" v-bind.sync="i"></CoReBox>-->
-<!--        </CoRePage>-->
+<!--        <co-re-page :boxArr="boxArr" >-->
+<!--            <CoReBox v-for="(i, ind) in boxArr" :key="ind" :boxId="ind" v-bind.sync="i"></CoReBox>-->
+<!--        </co-re-page>-->
 
         <!--        <ResizeBox style="background-color: red"></ResizeBox>-->
 
@@ -36,10 +36,12 @@ export default {
     },
     methods:{
         addBox(){
-            this.boxArr.push({       width: 100,
+            this.boxArr.push({
+                width: 100,
                 height: 100,
                 left: 0,
-                top: 0})
+                top: 0}
+            )
         },
         setD(){
             this.$refs.CoReBox.setDataM(+new Date())

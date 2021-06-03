@@ -5,7 +5,7 @@
          tabindex="0"
     >
         <div class="co-re_box-body">
-            <slot>{{naaa}}</slot>
+            <slot></slot>
         </div>
         <i class="co-re_box-move"  data-movetype="move"></i>
         <template v-if="openTrick">
@@ -56,7 +56,11 @@ export default {
         },
         usePercent: {
             type: Boolean,
-            default: true
+            default: false
+        },
+        boxId: {
+            type: [String, Number],
+            default: ''
         }
     },
     data(){
@@ -84,7 +88,7 @@ export default {
             },
             mouseAction: '',
             openWillChange: false,
-            naaa: 123
+            rePageInstance: null
         }
     },
     methods: {
@@ -92,7 +96,14 @@ export default {
             this.naaa = data;
         },
         getParentInfo(){
+
             const parent = this.$el.offsetParent;
+            // const parent = this.$parent.$el;
+            if(this.$parent){
+                if(['co-re-page', 'CoRePage'].includes(this.$parent.$options._componentTag) && this.$parent.$options.name === 'CoRePage'){
+                    this.rePageInstance = this.$parent;
+                }
+            }
             this.parentSize = {
                 width: parent.clientWidth,
                 height: parent.clientHeight,
@@ -104,41 +115,7 @@ export default {
                 yV: rect.top + parent.clientTop
             }
         },
-        boxMove: throttle(function (event){
-            if(this.mouseDown){
-                event.preventDefault();
-                if(this.mouseAction){
-
-                    let location = {
-                        w: this.width,
-                        h: this.height,
-                        l: this.left,
-                        t: this.top
-                    };
-                    // 鼠标在父元素中的位置
-                    let absDisP = {
-                        xV: event.pageX - this.parentDis.xV,
-                        yV: event.pageY - this.parentDis.yV,
-                    }
-                    // console.log('absDisP :>> ', absDisP);
-                    if (this.mouseAction === 'move') {
-                        location = this.actionMove(absDisP);
-                    } else {
-                        if (this.mouseAction.includes('b'))
-                            Object.assign(location, this.actionB(absDisP))
-                        if (this.mouseAction.includes('t'))
-                            Object.assign(location, this.actionT(absDisP))
-                        if (this.mouseAction.includes('l'))
-                            Object.assign(location, this.actionL(absDisP))
-                        if (this.mouseAction.includes('r'))
-                            Object.assign(location, this.actionR(absDisP))
-                    }
-                    this.changeSize(location);
-                }
-            }
-        }, 50),
-        //: throttle(function  90),
-        // boxMove(event){
+        // boxMove: throttle(function (event){
         //     if(this.mouseDown){
         //         event.preventDefault();
         //         if(this.mouseAction){
@@ -170,7 +147,41 @@ export default {
         //             this.changeSize(location);
         //         }
         //     }
-        // },
+        // }, 50),
+        //: throttle(function  90),
+        boxMove(event){
+            if(this.mouseDown){
+                event.preventDefault();
+                if(this.mouseAction){
+
+                    let location = {
+                        w: this.width,
+                        h: this.height,
+                        l: this.left,
+                        t: this.top
+                    };
+                    // 鼠标在父元素中的位置
+                    let absDisP = {
+                        xV: event.pageX - this.parentDis.xV,
+                        yV: event.pageY - this.parentDis.yV,
+                    }
+                    // console.log('absDisP :>> ', absDisP);
+                    if (this.mouseAction === 'move') {
+                        location = this.actionMove(absDisP);
+                    } else {
+                        if (this.mouseAction.includes('b'))
+                            Object.assign(location, this.actionB(absDisP))
+                        if (this.mouseAction.includes('t'))
+                            Object.assign(location, this.actionT(absDisP))
+                        if (this.mouseAction.includes('l'))
+                            Object.assign(location, this.actionL(absDisP))
+                        if (this.mouseAction.includes('r'))
+                            Object.assign(location, this.actionR(absDisP))
+                    }
+                    this.changeSize(location);
+                }
+            }
+        },
         mouseDownEvent(event){
             const { movetype: moveType } = event.target.dataset;
             this.mouseDown = true;
@@ -191,6 +202,7 @@ export default {
             this.$emit('update:top', location.t);
             this.$emit('update:left', location.l);
             this.$emit('resizing', location);
+            // this.rePageInstance?.resizeEvent(location);
         },
         actionMove(evt) {
             let needL = evt.xV - this.sizeData.xDis + this.sizeData.oldLeft;
@@ -343,7 +355,7 @@ $name: 're_box';
     width: 100px;
     height: 100px;
     transform-origin: 0 0;
-    transition: transform .13s;
+    //transition: transform .13s;
     &:focus{
         //background-color: red;
     }
