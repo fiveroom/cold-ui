@@ -4,12 +4,16 @@
         <div
             class="co-re_page-stand co-re_page-stand-x"
             v-show="xStand.display"
-            :style="{}"
+            :style="{
+                transform: `translateY(${xStand.top}px)`
+            }"
         ></div>
         <div
             class="co-re_page-stand co-re_page-stand-y"
             v-show="yStand.display"
-            :style="{}"
+            :style="{
+                transform: `translateX(${yStand.left}px)`
+            }"
         ></div>
     </div>
 </template>
@@ -17,6 +21,7 @@
 <script>
 import ResizeBox from "../../ResizeBox/src";
 import {numToFixed} from "../../tools";
+import {throttle} from "lodash";
 
 export default {
     name: "CoRePage",
@@ -24,110 +29,114 @@ export default {
         boxArr: {
             type: Array,
             default: () => ([])
+        },
+        useStand: {
+            type: Boolean,
+            default: true
         }
     },
-    data(){
-      return {
-          xStand: {
-              top: 0,
-              display: true,
-          },
-          yStand: {
-              left: 0,
-              display: true,
-          },
-          alignDis: 4,
-          box: {
-              width: 0,
-              height: 0,
-              centerW: 0,
-              centerH: 0
-          },
-          leftChange: 'no',
-          topChange: 'no',
-      }
+    data() {
+        return {
+            xStand: {
+                top: 0,
+                display: false,
+            },
+            yStand: {
+                left: 0,
+                display: false,
+            },
+            alignDis: 4,
+            box: {
+                width: 0,
+                height: 0,
+                centerW: 0,
+                centerH: 0
+            },
+            leftChange: 'no',
+            topChange: 'no',
+        }
     },
     updated() {
     },
     watch: {
-        boxArr(nV){
+        boxArr(nV) {
             console.log('nv :>> ', nV);
         }
     },
     computed: {
-        xStandStyle(){
+        xStandStyle() {
 
         }
     },
     mounted() {
-
+        this.initData();
     },
     comments: {
         ResizeBox
     },
-    methods:{
-        initData(){
+    methods: {
+        initData() {
             let rect = this.$el.getBoundingClientRect();
             this.box.height = rect.height;
             this.box.width = rect.width;
             this.box.centerW = rect.width / 2;
             this.box.centerH = rect.height / 2;
         },
-        resizeEvent(rect){
+        resizeEvent: throttle(function (rect) {
             this.pagePost(rect)
-        },
+        }, 100),
         pagePost(newRect) {
             let disW = newRect.w / 2 + newRect.l;
             let disH = newRect.h / 2 + newRect.t;
             if (
-                Math.abs(disW - this.box.centerH) < this.alignDis &&
-                Math.abs(disW - this.box.centerH) !== 0
+                Math.abs(disW - this.box.centerW) < this.alignDis &&
+                Math.abs(disW - this.box.centerW) !== 0
             ) {
-                this.leftChange = this.box.centerH - newRect.w / 2;
-                this.yStand.left = "50%";
+                // this.leftChange = this.box.centerW - newRect.w / 2;
+                this.yStand.left = this.box.centerW;
                 this.yStand.display = true;
             } else if (
-                Math.abs(newRect.l - this.box.centerH) < this.alignDis &&
-                Math.abs(newRect.l - this.box.centerH) !== 0
+                Math.abs(newRect.l - this.box.centerW) < this.alignDis &&
+                Math.abs(newRect.l - this.box.centerW) !== 0
             ) {
-                this.leftChange = this.box.centerH;
-                this.yStand.left = "50%";
+                // this.leftChange = this.box.centerW;
+                this.yStand.left = this.box.centerW;
                 this.yStand.display = true;
             } else if (
-                Math.abs(newRect.l + newRect.w - this.box.centerH) < this.alignDis &&
-                Math.abs(newRect.l + newRect.w - this.box.centerH) !== 0
+                Math.abs(newRect.l + newRect.w - this.box.centerW) < this.alignDis &&
+                Math.abs(newRect.l + newRect.w - this.box.centerW) !== 0
             ) {
-                this.leftChange = this.box.centerH - newRect.w;
-                this.yStand.left = "50%";
+                // this.leftChange = this.box.centerW - newRect.w;
+                this.yStand.left = this.box.centerW;
                 this.yStand.display = true;
             } else {
-                this.leftChange = "no";
+                // this.leftChange = "no";
                 this.yStand.display = false;
             }
             if (
                 Math.abs(disH - this.box.centerH) < this.alignDis &&
                 Math.abs(disH - this.box.centerH) !== 0
             ) {
-                this.xStand.top = "50%";
-                this.topChange = this.box.centerH - newRect.h / 2;
+                this.xStand.top = this.box.centerH;
+                // this.topChange = this.box.centerH - newRect.h / 2;
                 this.xStand.display = true;
             } else if (
                 Math.abs(newRect.t - this.box.centerH) < this.alignDis &&
                 Math.abs(newRect.t - this.box.centerH) !== 0
             ) {
-                this.xStand.top = "50%";
-                this.topChange = this.box.centerH;
+                this.xStand.top = this.box.centerH;
+                // this.topChange = this.box.centerH;
                 this.xStand.display = true;
             } else if (
                 Math.abs(newRect.t + newRect.h - this.box.centerH) < this.alignDis &&
                 Math.abs(newRect.t + newRect.h - this.box.centerH) !== 0
             ) {
-                this.xStand.top = "50%";
-                this.topChange = this.box.centerH - newRect.h;
+                this.xStand.top = this.box.centerH;
+                // this.topChange = this.box.centerH - newRect.h;
                 this.xStand.display = true;
             } else {
                 this.xStand.display = false;
-                this.topChange = "no";
+                // this.topChange = "no";
             }
         },
         blockPost(newRect, moduleId) {
@@ -327,19 +336,41 @@ export default {
                 }
             }
         },
-        findMin(arr){
+        findMin(arr) {
             arr.sort((a, b) => a.dis - b.dis);
             return (arr[0] && arr[0].obj) || null;
         }
-    }
+    },
+    // render(h, context) {
+    //     console.log('this :>> ', this);
+    //     // const standX = (
+    //     //     <div
+    //     //         class="co-re_page-stand co-re_page-stand-x"
+    //     //         vShow="xStand.display"
+    //     //     ></div>
+    //     // );
+    //     //
+    //     // const standY = (
+    //     //     <div
+    //     //         className="co-re_page-stand co-re_page-stand-y"
+    //     //         vShow="yStand.display"
+    //     //     ></div>
+    //     // );
+    //     console.log(' :>> ', context, );
+    //
+    //     return (<div class="co-re_page-home">
+    //         {this.$slots.default}
+    //     </div>)
+    // }
 }
 </script>
 
 <style scoped lang="scss">
 @import "../../global.scss";
+
 $name: 're_page';
 
-.#{$prefix}-#{$name}-home{
+.#{$prefix}-#{$name}-home {
     width: 100%;
     height: 100%;
     position: relative;
@@ -353,11 +384,13 @@ $name: 're_page';
     top: 0;
     left: 0;
     display: block;
+
     &-x {
         height: 0;
         width: 100%;
         border-top: 1px dashed #6eb1eb;
     }
+
     &-y {
         height: 100%;
         width: 0;

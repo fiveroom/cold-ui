@@ -202,7 +202,7 @@ export default {
             this.$emit('update:top', location.t);
             this.$emit('update:left', location.l);
             this.$emit('resizing', location);
-            // this.rePageInstance?.resizeEvent(location);
+            this.rePageInstance?.resizeEvent(location);
         },
         actionMove(evt) {
             let needL = evt.xV - this.sizeData.xDis + this.sizeData.oldLeft;
