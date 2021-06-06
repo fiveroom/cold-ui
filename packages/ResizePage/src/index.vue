@@ -1,19 +1,15 @@
 <template>
-    <div class="co-re_page-home">
+    <div class="co-re_page-home" tabindex="0">
         <slot></slot>
         <div
             class="co-re_page-stand co-re_page-stand-x"
             v-show="xStand.display"
-            :style="{
-                transform: `translateY(${xStand.top}px)`
-            }"
+            ref="standX"
         ></div>
         <div
             class="co-re_page-stand co-re_page-stand-y"
             v-show="yStand.display"
-            :style="{
-                transform: `translateX(${yStand.left}px)`
-            }"
+            ref="standY"
         ></div>
     </div>
 </template>
@@ -32,7 +28,21 @@ export default {
         },
         useStand: {
             type: Boolean,
-            default: true
+            default: false
+        },
+        useBlockStand: {
+            type: Boolean,
+            default: false
+        },
+        idPropName: String,
+        rectPropRewrite: {
+            type: Object,
+            default: () => ({
+                width: 'w',
+                height: 'h',
+                top: 't',
+                left: 'l'
+            })
         }
     },
     data() {
@@ -54,13 +64,21 @@ export default {
             },
             leftChange: 'no',
             topChange: 'no',
+            compIds: new Map(),
+            boxArrObj: {},
+            rectProp: {
+                width: 'w',
+                height: 'h',
+                top: 't',
+                left: 'l'
+            }
         }
-    },
-    updated() {
     },
     watch: {
         boxArr(nV) {
-            console.log('nv :>> ', nV);
+            console.log('nV :>> ', nV);
+            this.initResizeBox()
+            // console.log('this. :>> ', this.$slots.default);
         }
     },
     computed: {
@@ -70,6 +88,9 @@ export default {
     },
     mounted() {
         this.initData();
+    },
+    created() {
+        Object.assign(this.rectProp, this.rectPropRewrite)
     },
     comments: {
         ResizeBox
@@ -81,10 +102,62 @@ export default {
             this.box.width = rect.width;
             this.box.centerW = rect.width / 2;
             this.box.centerH = rect.height / 2;
+            this.initResizeBox()
         },
-        resizeEvent: throttle(function (rect) {
-            this.pagePost(rect)
-        }, 100),
+        initResizeBox() {
+            this.boxArrObj = {};
+            if (this.idPropName) {
+                this.boxArr.forEach(i => {
+                    i[this.idPropName] && (this.boxArrObj[i[this.idPropName]] = i);
+                })
+            }
+            this.$nextTick(() => {
+                const slots = this.$slots.default;
+                slots?.forEach(item => {
+                    const comp = item.componentInstance;
+                    if (comp && comp.$options.name === 'CoReBox') {
+                        if (this.compIds.has(comp.compId)) return;
+                        this.compIds.set(comp.compId, comp);
+                        comp.$on('resizing', this.resizeEvent.bind(this));
+                        comp.$on('resized', this.resizeStop.bind(this));
+                    }
+                })
+            })
+
+        },
+        resizeStop({rect, boxId, compId}) {
+            let obj = this.boxArrObj[boxId]
+            if(obj){
+                obj[this.rectProp.width] = rect.w;
+                obj[this.rectProp.height] = rect.h;
+                obj[this.rectProp.top] = rect.t;
+                obj[this.rectProp.left] = rect.l;
+
+                if (this.topChange !== 'no') {
+                    obj[this.rectProp.top] = this.topChange;
+                    this.topChange = "no";
+                    this.xStand.display = false;
+                }
+                if (this.leftChange !== 'no') {
+                    obj[this.rectProp.left] = this.leftChange;
+                    this.leftChange = "no";
+                    this.yStand.display = false;
+                }
+                this.$nextTick(() => {
+                    this.compIds.get(compId).setTransfrom();
+                })
+            }
+        },
+        resizeEvent: throttle(function (resizingData) {
+            this.pagePost(resizingData.rect);
+            this.blockPost(resizingData.rect, resizingData.boxId);
+            if (this.xStand.display) {
+                this.$refs.standX.style.transform = `translateY(${this.xStand.top}px)`
+            }
+            if (this.yStand.display) {
+                this.$refs.standY.style.transform = `translateX(${this.yStand.left}px)`
+            }
+        }, 30),
         pagePost(newRect) {
             let disW = newRect.w / 2 + newRect.l;
             let disH = newRect.h / 2 + newRect.t;
@@ -92,25 +165,25 @@ export default {
                 Math.abs(disW - this.box.centerW) < this.alignDis &&
                 Math.abs(disW - this.box.centerW) !== 0
             ) {
-                // this.leftChange = this.box.centerW - newRect.w / 2;
+                this.leftChange = this.box.centerW - newRect.w / 2;
                 this.yStand.left = this.box.centerW;
                 this.yStand.display = true;
             } else if (
                 Math.abs(newRect.l - this.box.centerW) < this.alignDis &&
                 Math.abs(newRect.l - this.box.centerW) !== 0
             ) {
-                // this.leftChange = this.box.centerW;
+                this.leftChange = this.box.centerW;
                 this.yStand.left = this.box.centerW;
                 this.yStand.display = true;
             } else if (
                 Math.abs(newRect.l + newRect.w - this.box.centerW) < this.alignDis &&
                 Math.abs(newRect.l + newRect.w - this.box.centerW) !== 0
             ) {
-                // this.leftChange = this.box.centerW - newRect.w;
+                this.leftChange = this.box.centerW - newRect.w;
                 this.yStand.left = this.box.centerW;
                 this.yStand.display = true;
             } else {
-                // this.leftChange = "no";
+                this.leftChange = "no";
                 this.yStand.display = false;
             }
             if (
@@ -118,26 +191,27 @@ export default {
                 Math.abs(disH - this.box.centerH) !== 0
             ) {
                 this.xStand.top = this.box.centerH;
-                // this.topChange = this.box.centerH - newRect.h / 2;
+                this.topChange = this.box.centerH - newRect.h / 2;
                 this.xStand.display = true;
             } else if (
                 Math.abs(newRect.t - this.box.centerH) < this.alignDis &&
                 Math.abs(newRect.t - this.box.centerH) !== 0
             ) {
                 this.xStand.top = this.box.centerH;
-                // this.topChange = this.box.centerH;
+                this.topChange = this.box.centerH;
                 this.xStand.display = true;
             } else if (
                 Math.abs(newRect.t + newRect.h - this.box.centerH) < this.alignDis &&
                 Math.abs(newRect.t + newRect.h - this.box.centerH) !== 0
             ) {
                 this.xStand.top = this.box.centerH;
-                // this.topChange = this.box.centerH - newRect.h;
+                this.topChange = this.box.centerH - newRect.h;
                 this.xStand.display = true;
             } else {
                 this.xStand.display = false;
-                // this.topChange = "no";
+                this.topChange = "no";
             }
+
         },
         blockPost(newRect, moduleId) {
             if (this.boxArr.length < 1) return;
@@ -151,7 +225,8 @@ export default {
             let resbTArr = [];
             let resrLArr = [];
             let reslRArr = [];
-            this.boxArr.filter(i => i.moduleId !== moduleId).forEach((it) => {
+            this.boxArr.forEach((it) => {
+                if(it[this.idPropName] === moduleId) return;
                 resTopArr.push({
                     dis: Math.abs(it.t - newRect.t),
                     obj: it,
@@ -239,9 +314,9 @@ export default {
                     Math.abs(rLEle.l - newRect.l - newRect.w);
                 let lREleDis =
                     lREle && Math.abs(lREle.l + lREle.w - newRect.l);
-                if (leftObjCenEle && leftCenDis < this.alignDis && leftCenDis != 0) {
+                if (leftObjCenEle && leftCenDis < this.alignDis && leftCenDis !== 0) {
                     this.yStand.left =
-                        leftObjCenEle.l + leftObjCenEle.w / 2 + "px";
+                        leftObjCenEle.l + leftObjCenEle.w / 2 ;
                     this.leftChange =
                         leftObjCenEle.l +
                         leftObjCenEle.w / 2 -
@@ -249,21 +324,21 @@ export default {
                     this.yStand.display = true;
                 } else if (leftObjEle && leftDis < this.alignDis && leftDis !== 0) {
                     this.leftChange = leftObjEle.l;
-                    this.yStand.left = this.leftChange + "px";
+                    this.yStand.left = this.leftChange;
                     this.yStand.display = true;
                 } else if (rLEle && rLEleDis < this.alignDis && rLEleDis !== 0) {
                     this.leftChange = rLEle.l - newRect.w;
-                    this.yStand.left = rLEle.l + "px";
+                    this.yStand.left = rLEle.l ;
                     this.yStand.display = true;
                 } else if (lREle && lREleDis < this.alignDis && lREleDis !== 0) {
                     this.leftChange = lREle.l + lREle.w;
-                    this.yStand.left = this.leftChange + "px";
+                    this.yStand.left = this.leftChange;
                     this.yStand.display = true;
                 } else if (rightObjEle && rightDis < this.alignDis && rightDis !== 0) {
                     this.leftChange =
                         rightObjEle.l + rightObjEle.w - newRect.w;
                     this.yStand.left =
-                        rightObjEle.l + rightObjEle.w + "px";
+                        rightObjEle.l + rightObjEle.w;
                     this.yStand.display = true;
                 } else {
                     this.leftChange = "no";
@@ -300,7 +375,7 @@ export default {
                     bTEle && Math.abs(bTEle.t - newRect.t - newRect.h);
                 if (topObjCenEle && topCenDis < this.alignDis && topCenDis !== 0) {
                     this.xStand.top =
-                        topObjCenEle.t + topObjCenEle.h / 2 + "px";
+                        topObjCenEle.t + topObjCenEle.h / 2;
                     this.topChange =
                         topObjCenEle.t +
                         topObjCenEle.h / 2 -
@@ -308,15 +383,15 @@ export default {
                     this.xStand.display = true;
                 } else if (tbEle && tbEleDis < this.alignDis && tbEleDis !== 0) {
                     this.topChange = tbEle.t + tbEle.h;
-                    this.xStand.top = this.topChange + "px";
+                    this.xStand.top = this.topChange;
                     this.xStand.display = true;
                 } else if (topObjEle && topDis < this.alignDis && topDis !== 0) {
                     this.topChange = topObjEle.t;
-                    this.xStand.top = this.topChange + "px";
+                    this.xStand.top = this.topChange;
                     this.xStand.display = true;
                 } else if (bTEle && bTEleDis < this.alignDis && bTEleDis !== 0) {
                     this.topChange = bTEle.t - newRect.h;
-                    this.xStand.top = bTEle.t + "px";
+                    this.xStand.top = bTEle.t;
                     this.xStand.display = true;
                 } else if (
                     bottomObjCenEle &&
@@ -328,10 +403,10 @@ export default {
                         bottomObjCenEle.h -
                         newRect.h;
                     this.xStand.top =
-                        bottomObjCenEle.t + bottomObjCenEle.h + "px";
+                        bottomObjCenEle.t + bottomObjCenEle.h ;
                     this.xStand.display = true;
                 } else {
-                    this.topChange = "no";
+                    this.topChange = 'no';
                     this.xStand.display = false;
                 }
             }
@@ -341,27 +416,6 @@ export default {
             return (arr[0] && arr[0].obj) || null;
         }
     },
-    // render(h, context) {
-    //     console.log('this :>> ', this);
-    //     // const standX = (
-    //     //     <div
-    //     //         class="co-re_page-stand co-re_page-stand-x"
-    //     //         vShow="xStand.display"
-    //     //     ></div>
-    //     // );
-    //     //
-    //     // const standY = (
-    //     //     <div
-    //     //         className="co-re_page-stand co-re_page-stand-y"
-    //     //         vShow="yStand.display"
-    //     //     ></div>
-    //     // );
-    //     console.log(' :>> ', context, );
-    //
-    //     return (<div class="co-re_page-home">
-    //         {this.$slots.default}
-    //     </div>)
-    // }
 }
 </script>
 

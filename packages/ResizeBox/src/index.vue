@@ -1,52 +1,60 @@
 <template>
-    <div class="co-re_box-home"
-         :style="[ transFormStyle, { 'z-index': this.zIndex, 'will-change': this.willChange}]"
-         @mousedown.stop="mouseDownEvent"
-         tabindex="0"
+    <div
+        class="co-re_box-home"
+        :class="{'co-re_box-is-move': mouseAction}"
+        :style="{ 'z-index': this.zIndex, 'will-change': this.willChange}"
+        @mousedown.stop="mouseDownEvent"
     >
         <div class="co-re_box-body">
             <slot></slot>
         </div>
-        <i class="co-re_box-move"  data-movetype="move"></i>
+        <i
+            class="co-re_box-move"
+            data-movetype="move"
+        ></i>
         <template v-if="openTrick">
-            <i class="co-re_box-trick"  v-for="i in trickList" :key="i" :class="`co-re_box-trick-${i}`" :data-movetype="i"></i>
+            <i
+                class="co-re_box-trick"
+                v-for="i in trickList"
+                :key="i"
+                :class="`co-re_box-trick-${i}`"
+                :data-movetype="i"
+            ></i>
         </template>
     </div>
 </template>
 
 <script>
 // event : resizing dragging resized
-import { throttle } from "lodash";
-
+import { uId } from '../../tools';
 export default {
     name: "CoReBox",
     props: {
         openTrick: {
             type: Boolean,
             default: true,
-
         },
-        height: {
+        h: {
             type: Number,
             default: 100
         },
-        width: {
+        w: {
             type: Number,
             default: 100
         },
-        top: {
+        t: {
             type: Number,
             default: 0
         },
-        left: {
+        l: {
             type: Number,
             default: 0
         },
-        minWidth:{
+        minWidth: {
             type: Number,
             default: 50
         },
-        minHeight:{
+        minHeight: {
             type: Number,
             default: 50
         },
@@ -61,13 +69,13 @@ export default {
         boxId: {
             type: [String, Number],
             default: ''
-        }
+        },
+        getSizeFunc: Function
     },
-    data(){
+    data() {
         return {
             lock: false,
             trickList: ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc"],
-            mouseDown: false,
             location: {
                 translateX: 0,
                 translateY: 0
@@ -77,10 +85,8 @@ export default {
                 height: 0
             },
             sizeData: {
-                xDis: 0,
-                yDis: 0,
-                oldLeft: 0,
-                oldTop: 0
+                lDis: 0,
+                tDis: 0
             },
             parentDis: {
                 xV: 0,
@@ -88,19 +94,21 @@ export default {
             },
             mouseAction: '',
             openWillChange: false,
-            rePageInstance: null
+            rePageInstance: null,
+            width: 50,
+            top: 0,
+            left: 0,
+            compId: uId()
         }
     },
     methods: {
-        setDataM(data){
+        setDataM(data) {
             this.naaa = data;
         },
-        getParentInfo(){
-
+        getParentInfo() {
             const parent = this.$el.offsetParent;
-            // const parent = this.$parent.$el;
-            if(this.$parent){
-                if(['co-re-page', 'CoRePage'].includes(this.$parent.$options._componentTag) && this.$parent.$options.name === 'CoRePage'){
+            if (this.$parent) {
+                if (['co-re-page', 'CoRePage'].includes(this.$parent.$options._componentTag) && this.$parent.$options.name === 'CoRePage') {
                     this.rePageInstance = this.$parent;
                 }
             }
@@ -111,120 +119,95 @@ export default {
             const rect = parent.getBoundingClientRect();
             // 元素在页面上的位置
             this.parentDis = {
-                xV: rect.left + parent.clientLeft,
-                yV: rect.top + parent.clientTop
+                xV: rect.left + parent.clientLeft + window.scrollX,
+                yV: rect.top + parent.clientTop + window.scrollY
             }
         },
-        // boxMove: throttle(function (event){
-        //     if(this.mouseDown){
-        //         event.preventDefault();
-        //         if(this.mouseAction){
-        //
-        //             let location = {
-        //                 w: this.width,
-        //                 h: this.height,
-        //                 l: this.left,
-        //                 t: this.top
-        //             };
-        //             // 鼠标在父元素中的位置
-        //             let absDisP = {
-        //                 xV: event.pageX - this.parentDis.xV,
-        //                 yV: event.pageY - this.parentDis.yV,
-        //             }
-        //             // console.log('absDisP :>> ', absDisP);
-        //             if (this.mouseAction === 'move') {
-        //                 location = this.actionMove(absDisP);
-        //             } else {
-        //                 if (this.mouseAction.includes('b'))
-        //                     Object.assign(location, this.actionB(absDisP))
-        //                 if (this.mouseAction.includes('t'))
-        //                     Object.assign(location, this.actionT(absDisP))
-        //                 if (this.mouseAction.includes('l'))
-        //                     Object.assign(location, this.actionL(absDisP))
-        //                 if (this.mouseAction.includes('r'))
-        //                     Object.assign(location, this.actionR(absDisP))
-        //             }
-        //             this.changeSize(location);
-        //         }
-        //     }
-        // }, 50),
-        //: throttle(function  90),
-        boxMove(event){
-            if(this.mouseDown){
+        boxMove(event) {
+            if (this.mouseAction) {
                 event.preventDefault();
-                if(this.mouseAction){
-
-                    let location = {
-                        w: this.width,
-                        h: this.height,
-                        l: this.left,
-                        t: this.top
-                    };
-                    // 鼠标在父元素中的位置
+                // 鼠标在父元素中的位置
+                if (this.mouseAction === 'move') {
+                    let absDisP = {
+                        xV: event.pageX,
+                        yV: event.pageY,
+                    }
+                    this.actionMove(absDisP);
+                    this.setTransfrom()
+                } else {
+                    let location = {};
                     let absDisP = {
                         xV: event.pageX - this.parentDis.xV,
                         yV: event.pageY - this.parentDis.yV,
                     }
-                    // console.log('absDisP :>> ', absDisP);
-                    if (this.mouseAction === 'move') {
-                        location = this.actionMove(absDisP);
-                    } else {
-                        if (this.mouseAction.includes('b'))
-                            Object.assign(location, this.actionB(absDisP))
-                        if (this.mouseAction.includes('t'))
-                            Object.assign(location, this.actionT(absDisP))
-                        if (this.mouseAction.includes('l'))
-                            Object.assign(location, this.actionL(absDisP))
-                        if (this.mouseAction.includes('r'))
-                            Object.assign(location, this.actionR(absDisP))
-                    }
-                    this.changeSize(location);
+                    if (this.mouseAction.includes('b'))
+                        Object.assign(location, this.actionB(absDisP))
+                    else if (this.mouseAction.includes('t'))
+                        Object.assign(location, this.actionT(absDisP))
+                    if (this.mouseAction.includes('l'))
+                        Object.assign(location, this.actionL(absDisP))
+                    else if (this.mouseAction.includes('r'))
+                        Object.assign(location, this.actionR(absDisP))
+                    this.setResize(location);
                 }
+                this.$emit('resizing', this.emitResizeData());
             }
         },
-        mouseDownEvent(event){
+        setResize(location) {
+            if (Reflect.has(location, 'top') || Reflect.has(location, 'left')) {
+                this.setTransfrom()
+            }
+            if (Reflect.has(location, 'width')) {
+                this.setWidth()
+            }
+            if (Reflect.has(location, 'height')) {
+                this.setHeight()
+            }
+        },
+        mouseDownEvent(event) {
             const { movetype: moveType } = event.target.dataset;
-            this.mouseDown = true;
             this.mouseAction = moveType;
-            if(moveType === 'move'){
-                // 鼠标点击时与父元素距离
+            if(this.mouseAction === 'move'){
                 this.sizeData = {
-                    xDis: event.pageX - this.parentDis.xV,
-                    yDis: event.pageY - this.parentDis.yV,
-                    oldLeft: this.left,
-                    oldTop: this.top
+                    lDis: event.pageX - this.left,
+                    tDis: event.pageY - this.top
                 }
             }
         },
-        changeSize(location){
-            this.$emit('update:width', location.w);
-            this.$emit('update:height', location.h);
-            this.$emit('update:top', location.t);
-            this.$emit('update:left', location.l);
-            this.$emit('resizing', location);
-            this.rePageInstance?.resizeEvent(location);
+        emitResizeData(){
+            return {
+                rect: {
+                    h: this.height,
+                    w: this.width,
+                    l: this.left,
+                    t: this.top
+                },
+                boxId: this.boxId,
+                compId: this.compId
+            }
         },
         actionMove(evt) {
-            let needL = evt.xV - this.sizeData.xDis + this.sizeData.oldLeft;
-            let needT = evt.yV - this.sizeData.yDis + this.sizeData.oldTop;
-            if (needL < 0) {
-                needL = 0;
-            } else if (needL + this.width > this.parentSize.width) {
-                needL = this.maxValue.maxLeft
-            }
+            this.computedL(evt);
+            this.computedT(evt);
+        },
+        computedT(evt) {
+            let needT = evt.yV - this.sizeData.tDis;
             if (needT < 0) {
                 needT = 0;
-            } else if (needT + this.height > this.parentSize.height) {
+            } else if (needT > this.maxValue.maxTop) {
                 needT = this.maxValue.maxTop;
             }
-            return {
-                l: needL,
-                t: needT,
-                h: this.height,
-                w: this.width
-            }
+            this.top = needT;
         },
-
+        computedL(evt) {
+            let needL = evt.xV - this.sizeData.lDis;
+            if (needL < 0) {
+                needL = 0;
+            } else if (needL > this.maxValue.maxLeft) {
+                needL = this.maxValue.maxLeft
+            }
+            this.left = needL;
+        },
         actionR(evt) {
             let needW = evt.xV - this.left;
             if (needW + this.left > this.parentSize.width) {
@@ -232,8 +215,9 @@ export default {
             } else if (needW < this.minWidth) {
                 needW = this.minWidth
             }
+            this.width = needW;
             return {
-                w: needW
+                width: needW
             }
         },
 
@@ -248,12 +232,13 @@ export default {
                 needL = this.left + this.width - this.minWidth;
                 needW = this.minWidth;
             }
+            this.width = needW;
+            this.left = needL;
             return {
-                w: needW,
-                l: needL,
+                width: needW,
+                left: needL,
             }
         },
-
         actionT(evt) {
             let needH = this.height - evt.yV + this.top;
             let needT = evt.yV;
@@ -265,12 +250,13 @@ export default {
                 needH = this.minHeight;
                 needT = this.top + this.height - this.minHeight;
             }
+            this.height = needH;
+            this.top = needT;
             return {
-                h: needH,
-                t: needT
+                height: needH,
+                top: needT
             }
         },
-
         actionB(evt) {
             let needH = evt.yV - this.top;
             if (needH + this.top > this.parentSize.height) {
@@ -278,31 +264,39 @@ export default {
             } else if (needH < this.minHeight) {
                 needH = this.minHeight;
             }
+            this.height = needH;
             return {
-                h: needH
+                height: needH
             }
         },
 
-        closeDown(){
-            this.mouseDown = false;
-            this.mouseAction = '';
-        },
 
-        mouseUp(){
-            this.$emit('resized', {w: this.width, h: this.height, t: this.top, l: this.left});
-            this.mouseAction = '';
-        },
+        mouseCancel() {
+            if (this.mouseAction) {
+                this.$emit('resized', this.emitResizeData());
+                this.mouseAction = '';
+            }
 
-        addEvent(){
+        },
+        addEvent() {
             document.documentElement.addEventListener('mousemove', this.boxMove);
-            document.documentElement.addEventListener('mousedown', this.closeDown);
-            document.documentElement.addEventListener('mouseup', this.mouseUp);
+            document.documentElement.addEventListener('mousedown', this.mouseCancel);
+            document.documentElement.addEventListener('mouseup', this.mouseCancel);
         },
-        clearEvent(){
+        clearEvent() {
             document.documentElement.removeEventListener('mousemove', this.boxMove);
-            document.documentElement.removeEventListener('mousedown', this.closeDown);
-            document.documentElement.removeEventListener('mouseup', this.mouseUp);
-        }
+            document.documentElement.removeEventListener('mousedown', this.mouseCancel);
+            document.documentElement.removeEventListener('mouseup', this.mouseCancel);
+        },
+        setTransfrom(d) {
+            this.$el.style.transform = `translate3d(${this.left}px, ${this.top}px, 0px)`;
+        },
+        setHeight() {
+            this.$el.style.height = this.height + 'px';
+        },
+        setWidth() {
+            this.$el.style.width = this.width + 'px';
+        },
     },
     created() {
 
@@ -315,28 +309,40 @@ export default {
         this.clearEvent();
     },
     computed: {
-        size(){
-            return {
-                width: this.width + 'px',
-                height: this.height + 'px',
-            }
-        },
-        transFormStyle(){
-            return {
-                'transform': `translate(${this.left}${this.unit}, ${this.top}${this.unit})`
-            }
-        },
-        unit(){
-           return this.usePercent ? '%' : 'px';
-        },
-        maxValue(){
+        maxValue() {
             return {
                 maxTop: this.parentSize.height - this.height,
                 maxLeft: this.parentSize.width - this.width,
             }
         },
-        willChange(){
+        willChange() {
             return this.mouseAction ? 'transform' : 'auto'
+        }
+    },
+    watch: {
+        h: {
+            immediate: true,
+            handler(v) {
+                this.height = v;
+            }
+        },
+        l: {
+            immediate: true,
+            handler(v) {
+                this.left = v;
+            }
+        },
+        t: {
+            immediate: true,
+            handler(v) {
+                this.top = v;
+            }
+        },
+        w: {
+            immediate: true,
+            handler(v) {
+                this.width = v;
+            }
         }
     }
 
@@ -355,9 +361,16 @@ $name: 're_box';
     width: 100px;
     height: 100px;
     transform-origin: 0 0;
-    //transition: transform .13s;
+    transition-property: box-shadow;
+    transition-duration: .2s;
+    box-shadow: 0 3px 1px -2px rgba(0,0,0,.2), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
     &:focus{
         //background-color: red;
+    }
+
+    &:active{
+        // transition: box-shadow 200ms cubic-bezier(0, 0, 0.2, 1);
+        box-shadow: 0 5px 5px -3px rgba(0,0,0,.2), 0 8px 10px 1px rgba(0,0,0,.1), 0 3px 14px 2px rgba(0,0,0,.12);
     }
 }
 
@@ -453,5 +466,9 @@ $name: 're_box';
 .#{$prefix}-#{$name}-body{
     width: 100%;
     height: 100%;
+}
+.#{$prefix}-#{$name}-is-move{
+    user-select: none;
+
 }
 </style>
