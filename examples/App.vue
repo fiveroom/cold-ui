@@ -14,6 +14,7 @@
 
 <script>
 import HelloWorld from "./components/HelloWorld";
+import {uId} from "../packages/tools";
 
 export default {
     name: 'App',
@@ -37,7 +38,8 @@ export default {
                     w: 100,
                     h: 100,
                     l: 0,
-                    t: 0
+                    t: 0,
+                    id: uId()
                 }
             )
         },
@@ -52,7 +54,7 @@ export default {
         }
     },
     created() {
-        this.boxArr = Array.from({length: 1}).map((i, ind) => ({
+        this.boxArr = Array.from({length: 100}).map((i, ind) => ({
                     w: 100,
                     h: 100,
                     l: 0,
@@ -70,9 +72,8 @@ export default {
 
 <style lang="scss">
 #app {
-    height: 600px;
-    width: 700px;
-    margin: 100px auto;
+    height: 400px;
+    width: 100vw;
     border: 1px solid red;
     position: relative;
     z-index: 0;

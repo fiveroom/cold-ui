@@ -1,5 +1,8 @@
 <template>
-    <div class="co-re_page-home" tabindex="0">
+    <div class="co-re_page-home" tabindex="0"
+         @keydown.stop.prevent="boxKeyDown($event)"
+         @keyup.stop.prevent="boxKeyUp($event)"
+    >
         <slot></slot>
         <div
             class="co-re_page-stand co-re_page-stand-x"
@@ -17,7 +20,7 @@
 <script>
 import ResizeBox from "../../ResizeBox/src";
 import {numToFixed} from "../../tools";
-import {throttle} from "lodash";
+import {throttle, debounce} from "lodash";
 
 export default {
     name: "CoRePage",
@@ -43,6 +46,14 @@ export default {
                 top: 't',
                 left: 'l'
             })
+        },
+        useKeyControl: {
+            type: Boolean,
+            default: true
+        },
+        keyStep: {
+            type: Number,
+            default: 1
         }
     },
     data() {
@@ -64,14 +75,27 @@ export default {
             },
             leftChange: 'no',
             topChange: 'no',
-            compIds: new Map(),
+            compIds: {},
             boxArrObj: {},
             rectProp: {
                 width: 'w',
                 height: 'h',
                 top: 't',
                 left: 'l'
-            }
+            },
+            keyDownEvent: {
+                ArrowRight: [true, false],
+                39: [true, false],
+                ArrowLeft: [false, false],
+                37: [false, false],
+                ArrowDown: [true, true],
+                40: [true, true],
+                ArrowUp: [false, true],
+                38: [false, true]
+            },
+            checkBoxes: new Set(),
+            keyDownData: null,
+            controlStu: false
         }
     },
     watch: {
@@ -88,11 +112,15 @@ export default {
     },
     mounted() {
         this.initData();
+        this.bindDocEvent()
+    },
+    beforeDestroy() {
+        this.clearDocEvent()
     },
     created() {
         Object.assign(this.rectProp, this.rectPropRewrite)
     },
-    comments: {
+    components: {
         ResizeBox
     },
     methods: {
@@ -116,14 +144,71 @@ export default {
                 slots?.forEach(item => {
                     const comp = item.componentInstance;
                     if (comp && comp.$options.name === 'CoReBox') {
-                        if (this.compIds.has(comp.compId)) return;
-                        this.compIds.set(comp.compId, comp);
-                        comp.$on('resizing', this.resizeEvent.bind(this));
-                        comp.$on('resized', this.resizeStop.bind(this));
+                        if (this.compIds[comp.compId]) return;
+                        this.compIds[comp.compId] = comp;
+                        if(this.useStand){
+                            comp.$on('resizing', this.resizeEvent.bind(this));
+                            comp.$on('resized', this.resizeStop.bind(this));
+                        }
+                        if(this.useKeyControl){
+                            comp.$on('check-box', this.getActiveBox.bind(this));
+                            comp.$on('uncheck-box', this.getUnActiveBox.bind(this));
+                        }
                     }
                 })
             })
+        },
+        getActiveBox({compId}){
+            if(this.controlStu){
+                if(this.checkBoxes.has(compId)){
+                    this.checkBoxes.delete(compId);
+                    this.compIds[i].setActive(false)
+                }
+                this.checkBoxes.add(compId);
+            } else {
+                console.log('this.checkBoxes :>> ', this.checkBoxes);
+                this.checkBoxes.forEach(i => {
+                    this.compIds[i].setActive(false)
+                })
+                this.checkBoxes.add(compId);
+                this.compIds[compId].setActive(true)
+            }
 
+        },
+        getUnActiveBox({compId}){
+            this.checkBoxes.delete(compId);
+        },
+        boxKeyDown(event){
+            this.controlStu = event.ctrlKey;
+            if(!this.checkBoxes.size) return;
+            if(!this.keyDownData){
+                this.keyDownData = {}
+            }
+            const done =this.keyDownEvent[event.code || event.keyCode];
+            if(done){
+                this.checkBoxes.forEach(val => {
+                    this.keyDownData[val] =  this.compIds[val].actionMoveByStep.apply(null, this.setStepVal(done))
+                });
+                this.boxKeyDownEnd();
+            }
+
+        },
+        boxKeyDownEnd: debounce(function(){
+            Object.keys(this.keyDownData).forEach(val => {
+                const source = this.keyDownData[val];
+                let obj = this.boxArrObj[source.boxId];
+                obj[this.rectProp.top] = source.top;
+                obj[this.rectProp.left] = source.left;
+            })
+            this.keyDownData = null;
+        }, 500),
+        boxKeyUp(event){
+            this.controlStu = event.ctrlKey;
+            this.yStand.display = false;
+            this.xStand.display = false;
+        },
+        setStepVal([add, top]){
+            return [add ? this.keyStep : -this.keyStep, top]
         },
         resizeStop({rect, boxId, compId}) {
             let obj = this.boxArrObj[boxId]
@@ -133,18 +218,21 @@ export default {
                 obj[this.rectProp.top] = rect.t;
                 obj[this.rectProp.left] = rect.l;
 
-                if (this.topChange !== 'no') {
-                    obj[this.rectProp.top] = this.topChange;
-                    this.topChange = "no";
-                    this.xStand.display = false;
-                }
-                if (this.leftChange !== 'no') {
-                    obj[this.rectProp.left] = this.leftChange;
-                    this.leftChange = "no";
-                    this.yStand.display = false;
-                }
+                if(!this.useStand) return;
                 this.$nextTick(() => {
-                    this.compIds.get(compId).setTransfrom();
+                    if (this.topChange !== 'no') {
+                        obj[this.rectProp.top] = this.topChange;
+                        this.topChange = "no";
+                    }
+                    if (this.leftChange !== 'no') {
+                        obj[this.rectProp.left] = this.leftChange;
+                        this.leftChange = "no";
+                    }
+                    this.yStand.display = false;
+                    this.xStand.display = false;
+                    this.$nextTick().then(() => {
+                        this.compIds[compId].setTransfrom()
+                    });
                 })
             }
         },
@@ -157,7 +245,9 @@ export default {
             if (this.yStand.display) {
                 this.$refs.standY.style.transform = `translateX(${this.yStand.left}px)`
             }
-        }, 30),
+        }, 80, {
+            trailing: false
+        }),
         pagePost(newRect) {
             let disW = newRect.w / 2 + newRect.l;
             let disH = newRect.h / 2 + newRect.t;
@@ -414,6 +504,18 @@ export default {
         findMin(arr) {
             arr.sort((a, b) => a.dis - b.dis);
             return (arr[0] && arr[0].obj) || null;
+        },
+        clearCheck(){
+            this.checkBoxes.clear();
+            this.checkBoxes.forEach(i => {
+                this.compIds[i].setActive(false)
+            })
+        },
+        bindDocEvent(){
+            document.addEventListener('mousedown', this.clearCheck)
+        },
+        clearDocEvent(){
+            document.removeEventListener('mousedown', this.clearCheck)
         }
     },
 }

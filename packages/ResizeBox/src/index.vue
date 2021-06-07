@@ -4,9 +4,10 @@
         :class="{'co-re_box-is-move': mouseAction}"
         :style="{ 'z-index': this.zIndex, 'will-change': this.willChange}"
         @mousedown.stop="mouseDownEvent"
+        tabindex="0"
     >
         <div class="co-re_box-body">
-            <slot></slot>
+            <slot>{{compId}}</slot>
         </div>
         <i
             class="co-re_box-move"
@@ -16,6 +17,7 @@
             <i
                 class="co-re_box-trick"
                 v-for="i in trickList"
+                v-show="boxActive"
                 :key="i"
                 :class="`co-re_box-trick-${i}`"
                 :data-movetype="i"
@@ -25,8 +27,11 @@
 </template>
 
 <script>
-// event : resizing dragging resized
+// event : resizing dragging resized check-box
 import { uId } from '../../tools';
+import {debounce} from "lodash";
+
+
 export default {
     name: "CoReBox",
     props: {
@@ -98,13 +103,13 @@ export default {
             width: 50,
             top: 0,
             left: 0,
-            compId: uId()
+            height: 50,
+            compId: uId(),
+            boxActive: false,
+            resizeEndDe: null
         }
     },
     methods: {
-        setDataM(data) {
-            this.naaa = data;
-        },
         getParentInfo() {
             const parent = this.$el.offsetParent;
             if (this.$parent) {
@@ -132,8 +137,7 @@ export default {
                         xV: event.pageX,
                         yV: event.pageY,
                     }
-                    this.actionMove(absDisP);
-                    this.setTransfrom()
+                    this.actionMove(event.pageX - this.sizeData.lDis, event.pageY - this.sizeData.tDis);
                 } else {
                     let location = {};
                     let absDisP = {
@@ -167,10 +171,14 @@ export default {
         mouseDownEvent(event) {
             const { movetype: moveType } = event.target.dataset;
             this.mouseAction = moveType;
-            if(this.mouseAction === 'move'){
-                this.sizeData = {
-                    lDis: event.pageX - this.left,
-                    tDis: event.pageY - this.top
+            if(moveType){
+                this.boxActive = true;
+                this.$emit('check-box', this.ids);
+                if(this.mouseAction === 'move'){
+                    this.sizeData = {
+                        lDis: event.pageX - this.left,
+                        tDis: event.pageY - this.top
+                    }
                 }
             }
         },
@@ -183,30 +191,44 @@ export default {
                     t: this.top
                 },
                 boxId: this.boxId,
-                compId: this.compId
+                compId: this.compId,
             }
         },
-        actionMove(evt) {
-            this.computedL(evt);
-            this.computedT(evt);
+        actionMove(left, top) {
+            this.left = this.verifyLeft(left);
+            this.top = this.verifyTop(top);
+            this.setTransfrom()
         },
-        computedT(evt) {
-            let needT = evt.yV - this.sizeData.tDis;
-            if (needT < 0) {
-                needT = 0;
-            } else if (needT > this.maxValue.maxTop) {
-                needT = this.maxValue.maxTop;
+        actionMoveByStep(step, topStu) {
+            if(topStu){
+                this.top = this.verifyTop(this.top + step);
+            } else {
+                this.left = this.verifyLeft(this.left + step);
             }
-            this.top = needT;
+            this.setTransfrom();
+            this.$emit('resizing', this.emitResizeData());
+            return {
+                boxId: this.boxId,
+                left: this.left,
+                top: this.top
+            }
+            // this.resizeEndDe()
         },
-        computedL(evt) {
-            let needL = evt.xV - this.sizeData.lDis;
+        verifyLeft(needL){
             if (needL < 0) {
                 needL = 0;
             } else if (needL > this.maxValue.maxLeft) {
                 needL = this.maxValue.maxLeft
             }
-            this.left = needL;
+            return needL
+        },
+        verifyTop(needT){
+            if (needT < 0) {
+                needT = 0;
+            } else if (needT > this.maxValue.maxTop) {
+                needT = this.maxValue.maxTop;
+            }
+            return needT
         },
         actionR(evt) {
             let needW = evt.xV - this.left;
@@ -220,7 +242,9 @@ export default {
                 width: needW
             }
         },
-
+        setActive(val){
+            this.boxActive = val;
+        },
         actionL(evt) {
             let needW = this.width - evt.xV + this.left;
             let needL = evt.xV;
@@ -278,14 +302,19 @@ export default {
             }
 
         },
+
+        mouseDownOther(){
+            this.boxActive = false;
+            this.$emit('uncheck-box', this.ids)
+        },
         addEvent() {
             document.documentElement.addEventListener('mousemove', this.boxMove);
-            document.documentElement.addEventListener('mousedown', this.mouseCancel);
+            document.documentElement.addEventListener('mousedown', this.mouseDownOther);
             document.documentElement.addEventListener('mouseup', this.mouseCancel);
         },
         clearEvent() {
             document.documentElement.removeEventListener('mousemove', this.boxMove);
-            document.documentElement.removeEventListener('mousedown', this.mouseCancel);
+            document.documentElement.removeEventListener('mousedown', this.mouseDownOther);
             document.documentElement.removeEventListener('mouseup', this.mouseCancel);
         },
         setTransfrom(d) {
@@ -299,7 +328,7 @@ export default {
         },
     },
     created() {
-
+        this.resizeEndDe = debounce(()=>this.$emit('resized', this.emitResizeData()), 500);
     },
     mounted() {
         this.getParentInfo();
@@ -317,6 +346,12 @@ export default {
         },
         willChange() {
             return this.mouseAction ? 'transform' : 'auto'
+        },
+        ids(){
+            return {
+                boxId: this.boxId,
+                compId: this.compId,
+            }
         }
     },
     watch: {
@@ -352,6 +387,11 @@ export default {
 <style scoped lang="scss">
 @import "../../global.scss";
 $name: 're_box';
+
+$trick-width: 4px;
+$trick-padding: 8px;
+$trick-out: -2px;
+$trick-border: 4px solid #000;
 .#{$prefix}-#{$name}-home{
     background-color: skyblue;
     position: absolute;
@@ -366,6 +406,7 @@ $name: 're_box';
     box-shadow: 0 3px 1px -2px rgba(0,0,0,.2), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
     &:focus{
         //background-color: red;
+        outline: none;
     }
 
     &:active{
@@ -373,62 +414,66 @@ $name: 're_box';
         box-shadow: 0 5px 5px -3px rgba(0,0,0,.2), 0 8px 10px 1px rgba(0,0,0,.1), 0 3px 14px 2px rgba(0,0,0,.12);
     }
 }
-
 .#{$prefix}-#{$name}-trick {
-    width: 8px;
-    height: 8px;
-    box-sizing: border-box;
+    //width: 8px;
+    //height: 8px;
+    //box-sizing: border-box;
     position: absolute;
     display: block;
     font-size: 1px;
-    background: #fff;
-    border: 1px solid #6c6c6c;
-    -webkit-box-shadow: 0 0 2px #bbb;
-    box-shadow: 0 0 2px #bbb;
     z-index: 2;
 
     &-tr {
-        top: -4px;
-        right: -4px;
+        top: $trick-out;
+        right: $trick-out;
+        border-top-right-radius: 2px;
+        border-top: $trick-border;
+        border-right: $trick-border;
     }
 
     &-tl {
-        top: -4px;
-        left: -4px;
+        top: $trick-out;
+        left: $trick-out;
+        border-top-left-radius: 2px;
+        border-top: $trick-border;
+        border-left: $trick-border;
     }
 
     &-tc {
-        top: -4px;
-        left: 50%;
-        transform: translateX(-50%);
+        top: $trick-out;
     }
 
     &-br {
-        bottom: -4px;
-        right: -4px;
+        bottom: $trick-out;
+        right: $trick-out;
+        border-bottom-right-radius: 2px;
+        border-right: $trick-border;
+        border-bottom: $trick-border;
     }
 
     &-bl {
-        bottom: -4px;
-        left: -4px;
+        bottom: $trick-out;
+        left: $trick-out;
+        border-left: $trick-border;
+        border-bottom: $trick-border;
+        border-bottom-left-radius: 2px;
     }
 
     &-bc {
-        bottom: -4px;
-        left: 50%;
-        transform: translateX(-50%);
+        bottom: $trick-out;
     }
 
     &-lc {
-        left: -4px;
-        top: 50%;
-        transform: translateY(-50%);
+        left: $trick-out;
     }
 
     &-rc {
-        right: -4px;
-        top: 50%;
-        transform: translateY(-50%);
+        right: $trick-out;
+    }
+
+    &-bl,&-tr,&-br,&-tl{
+        width: 6px;
+        height: 6px;
     }
 
     &-bl,
@@ -445,11 +490,17 @@ $name: 're_box';
     &-tc,
     &-bc {
         cursor: ns-resize;
+        left: $trick-padding;
+        height: $trick-width;
+        right: $trick-padding;
     }
 
     &-lc,
     &-rc {
         cursor: ew-resize;
+        top: $trick-padding;
+        bottom: $trick-padding;
+        width: $trick-width;
     }
 }
 .#{$prefix}-#{$name}-move{
