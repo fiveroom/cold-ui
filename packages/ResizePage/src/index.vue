@@ -54,6 +54,14 @@ export default {
         keyStep: {
             type: Number,
             default: 1
+        },
+        oldWidth: {
+            type: Number,
+            default: 0,
+        },
+        oldHeight: {
+            type: Number,
+            default: 0,
         }
     },
     data() {
@@ -71,7 +79,13 @@ export default {
                 width: 0,
                 height: 0,
                 centerW: 0,
-                centerH: 0
+                centerH: 0,
+                xV: 0,
+                yV: 0
+            },
+            oldBox: {
+                width: 0,
+                height: 0
             },
             leftChange: 'no',
             topChange: 'no',
@@ -95,7 +109,8 @@ export default {
             },
             checkBoxes: new Set(),
             keyDownData: null,
-            controlStu: false
+            controlStu: false,
+            setParentSizeToBoxDe: null
         }
     },
     watch: {
@@ -105,32 +120,32 @@ export default {
             // console.log('this. :>> ', this.$slots.default);
         }
     },
-    computed: {
-        xStandStyle() {
-
-        }
-    },
     mounted() {
-        this.initData();
+        this.initBoxSize();
+        this.initResizeBox()
         this.bindDocEvent()
     },
     beforeDestroy() {
         this.clearDocEvent()
     },
     created() {
-        Object.assign(this.rectProp, this.rectPropRewrite)
+        this.oldBox.width = this.oldWidth;
+        this.oldBox.height = this.oldHeight;
+        Object.assign(this.rectProp, this.rectPropRewrite);
+        this.setParentSizeToBoxDe = debounce(this.setParentSizeToBox, 500);
     },
     components: {
         ResizeBox
     },
     methods: {
-        initData() {
+        initBoxSize() {
             let rect = this.$el.getBoundingClientRect();
             this.box.height = rect.height;
             this.box.width = rect.width;
             this.box.centerW = rect.width / 2;
             this.box.centerH = rect.height / 2;
-            this.initResizeBox()
+            this.box.xV = rect.left + window.scrollX;
+            this.box.yV = rect.top + window.scrollY;
         },
         initResizeBox() {
             this.boxArrObj = {};
@@ -142,8 +157,10 @@ export default {
             this.$nextTick(() => {
                 const slots = this.$slots.default;
                 slots?.forEach(item => {
+                    console.log('item :>> ', item);
                     const comp = item.componentInstance;
                     if (comp && comp.$options.name === 'CoReBox') {
+                        console.log('compIds :>> ', comp);
                         if (this.compIds[comp.compId]) return;
                         this.compIds[comp.compId] = comp;
                         if(this.useStand){
@@ -156,17 +173,20 @@ export default {
                         }
                     }
                 })
+                this.setParentSizeToBox()
             })
         },
         getActiveBox({compId}){
             if(this.controlStu){
+                let stu = this.checkBoxes.has(compId);
                 if(this.checkBoxes.has(compId)){
                     this.checkBoxes.delete(compId);
-                    this.compIds[i].setActive(false)
+                } else {
+                    this.checkBoxes.add(compId);
                 }
-                this.checkBoxes.add(compId);
+                this.checkBoxes[stu ? 'delete' : 'add'](compId);
+                this.compIds[compId].setActive(!stu)
             } else {
-                console.log('this.checkBoxes :>> ', this.checkBoxes);
                 this.checkBoxes.forEach(i => {
                     this.compIds[i].setActive(false)
                 })
@@ -210,30 +230,23 @@ export default {
         setStepVal([add, top]){
             return [add ? this.keyStep : -this.keyStep, top]
         },
-        resizeStop({rect, boxId, compId}) {
+        resizeStop({boxId, compId}) {
             let obj = this.boxArrObj[boxId]
             if(obj){
-                obj[this.rectProp.width] = rect.w;
-                obj[this.rectProp.height] = rect.h;
-                obj[this.rectProp.top] = rect.t;
-                obj[this.rectProp.left] = rect.l;
-
                 if(!this.useStand) return;
-                this.$nextTick(() => {
-                    if (this.topChange !== 'no') {
-                        obj[this.rectProp.top] = this.topChange;
-                        this.topChange = "no";
-                    }
-                    if (this.leftChange !== 'no') {
-                        obj[this.rectProp.left] = this.leftChange;
-                        this.leftChange = "no";
-                    }
-                    this.yStand.display = false;
-                    this.xStand.display = false;
-                    this.$nextTick().then(() => {
-                        this.compIds[compId].setTransfrom()
-                    });
-                })
+                if (this.topChange !== 'no') {
+                    obj[this.rectProp.top] = this.topChange;
+                    this.topChange = "no";
+                }
+                if (this.leftChange !== 'no') {
+                    obj[this.rectProp.left] = this.leftChange;
+                    this.leftChange = "no";
+                }
+                this.yStand.display = false;
+                this.xStand.display = false;
+                this.$nextTick().then(() => {
+                    this.compIds[compId].setTransfrom()
+                });
             }
         },
         resizeEvent: throttle(function (resizingData) {
@@ -512,11 +525,49 @@ export default {
             })
         },
         bindDocEvent(){
-            document.addEventListener('mousedown', this.clearCheck)
+            document.addEventListener('mousedown', this.clearCheck);
+            window.addEventListener('resize', this.resizeBox);
+            window.addEventListener('resize', this.setParentSizeToBoxDe);
         },
         clearDocEvent(){
-            document.removeEventListener('mousedown', this.clearCheck)
-        }
+            document.removeEventListener('mousedown', this.clearCheck);
+            window.removeEventListener('resize', this.resizeBox);
+            window.removeEventListener('resize', this.setParentSizeToBoxDe);
+
+        },
+        setParentSizeToBox(){
+            Object.keys(this.compIds).forEach(i => {
+                this.compIds[i].setParentSize(this.box);
+            })
+        },
+        resizeBox: throttle(function (){
+            if(!this.oldBox.width) {
+                this.oldBox.width = this.box.width;
+                this.oldBox.height = this.box.height;
+            }
+            this.initBoxSize()
+            let ratioW = this.oldBox.width / this.box.width;
+            let ratioH = this.oldBox.height / this.box.height;
+            this.boxArr.forEach(item => {
+                if (ratioW !== 1) {
+                    item.w = numToFixed(item.w / ratioW);
+                    item.l = numToFixed(item.l / ratioW);
+                }
+                if (ratioH !== 1) {
+                    item.h = numToFixed(item.h / ratioH);
+                    item.t = numToFixed(item.t / ratioH);
+                }
+            })
+            this.oldBox.width = this.box.width;
+            this.oldBox.height = this.box.height;
+            this.$nextTick().then(() =>{
+                Object.keys(this.compIds).forEach(i => {
+                    this.compIds[i].reload();
+                })
+            })
+        }, 30, {
+            trailing: false
+        })
     },
 }
 </script>

@@ -1,7 +1,7 @@
 <template>
     <div
         class="co-re_box-home"
-        :class="{'co-re_box-is-move': mouseAction}"
+        :class="{'co-re_box-is-move': mouseAction, 'co-re_box-home-animal': this.openAnimal}"
         :style="{ 'z-index': this.zIndex, 'will-change': this.willChange}"
         @mousedown.stop="mouseDownEvent"
         tabindex="0"
@@ -75,7 +75,16 @@ export default {
             type: [String, Number],
             default: ''
         },
-        getSizeFunc: Function
+        openAnimal: {
+          type: Boolean,
+          default: false
+        },
+        getSizeFunc: Function,
+        parentSize: {
+            type: Object,
+            default: null
+        },
+        auToParentSize: false
     },
     data() {
         return {
@@ -85,47 +94,38 @@ export default {
                 translateX: 0,
                 translateY: 0
             },
-            parentSize: {
-                width: 0,
-                height: 0
-            },
             sizeData: {
                 lDis: 0,
                 tDis: 0
             },
             parentDis: {
                 xV: 0,
-                yV: 0
+                yV: 0,
+                width: 0,
+                height: 0
             },
             mouseAction: '',
             openWillChange: false,
-            rePageInstance: null,
             width: 50,
             top: 0,
             left: 0,
             height: 50,
             compId: uId(),
             boxActive: false,
-            resizeEndDe: null
+            resizeEndDe: null,
+            getParentInfoDe: null
         }
     },
     methods: {
         getParentInfo() {
             const parent = this.$el.offsetParent;
-            if (this.$parent) {
-                if (['co-re-page', 'CoRePage'].includes(this.$parent.$options._componentTag) && this.$parent.$options.name === 'CoRePage') {
-                    this.rePageInstance = this.$parent;
-                }
-            }
-            this.parentSize = {
-                width: parent.clientWidth,
-                height: parent.clientHeight,
-            }
             const rect = parent.getBoundingClientRect();
             // 元素在页面上的位置
             this.parentDis = {
                 xV: rect.left + parent.clientLeft + window.scrollX,
-                yV: rect.top + parent.clientTop + window.scrollY
+                yV: rect.top + parent.clientTop + window.scrollY,
+                width: rect.width,
+                height: rect.height
             }
         },
         boxMove(event) {
@@ -232,8 +232,8 @@ export default {
         },
         actionR(evt) {
             let needW = evt.xV - this.left;
-            if (needW + this.left > this.parentSize.width) {
-                needW = this.parentSize.width - this.left
+            if (needW + this.left > this.parentDis.width) {
+                needW = this.parentDis.width - this.left
             } else if (needW < this.minWidth) {
                 needW = this.minWidth
             }
@@ -283,8 +283,8 @@ export default {
         },
         actionB(evt) {
             let needH = evt.yV - this.top;
-            if (needH + this.top > this.parentSize.height) {
-                needH = this.parentSize.height - this.top;
+            if (needH + this.top > this.parentDis.height) {
+                needH = this.parentDis.height - this.top;
             } else if (needH < this.minHeight) {
                 needH = this.minHeight;
             }
@@ -297,6 +297,10 @@ export default {
 
         mouseCancel() {
             if (this.mouseAction) {
+                this.$emit('update:w', this.width);
+                this.$emit('update:h', this.height);
+                this.$emit('update:l', this.left);
+                this.$emit('update:t', this.top);
                 this.$emit('resized', this.emitResizeData());
                 this.mouseAction = '';
             }
@@ -311,13 +315,20 @@ export default {
             document.documentElement.addEventListener('mousemove', this.boxMove);
             document.documentElement.addEventListener('mousedown', this.mouseDownOther);
             document.documentElement.addEventListener('mouseup', this.mouseCancel);
+            if(this.auToParentSize){
+                window.addEventListener('resize', this.getParentInfoDe);
+            }
         },
         clearEvent() {
             document.documentElement.removeEventListener('mousemove', this.boxMove);
             document.documentElement.removeEventListener('mousedown', this.mouseDownOther);
             document.documentElement.removeEventListener('mouseup', this.mouseCancel);
+            if(this.auToParentSize){
+                window.removeEventListener('resize', this.getParentInfoDe);
+            }
+
         },
-        setTransfrom(d) {
+        setTransfrom() {
             this.$el.style.transform = `translate3d(${this.left}px, ${this.top}px, 0px)`;
         },
         setHeight() {
@@ -326,9 +337,25 @@ export default {
         setWidth() {
             this.$el.style.width = this.width + 'px';
         },
+        reload(){
+            this.setTransfrom();
+            this.setHeight();
+            this.setWidth();
+        },
+        setParentSize(size){
+            this.parentDis = {
+                xV: size.xV,
+                yV: size.yV,
+                width: size.width,
+                height: size.height
+            }
+        }
     },
     created() {
         this.resizeEndDe = debounce(()=>this.$emit('resized', this.emitResizeData()), 500);
+        if(this.auToParentSize){
+            this.getParentInfoDe = debounce(this.getParentInfo, 500);
+        }
     },
     mounted() {
         this.getParentInfo();
@@ -340,8 +367,8 @@ export default {
     computed: {
         maxValue() {
             return {
-                maxTop: this.parentSize.height - this.height,
-                maxLeft: this.parentSize.width - this.width,
+                maxTop: this.parentDis.height - this.height,
+                maxLeft: this.parentDis.width - this.width,
             }
         },
         willChange() {
@@ -412,6 +439,10 @@ $trick-border: 4px solid #000;
     &:active{
         // transition: box-shadow 200ms cubic-bezier(0, 0, 0.2, 1);
         box-shadow: 0 5px 5px -3px rgba(0,0,0,.2), 0 8px 10px 1px rgba(0,0,0,.1), 0 3px 14px 2px rgba(0,0,0,.12);
+    }
+    &-animal{
+        transition-property: all;
+        transition-duration: .2s;
     }
 }
 .#{$prefix}-#{$name}-trick {

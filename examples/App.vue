@@ -5,8 +5,16 @@
         <button @click="setD">set Data</button>
         <div id="app">
             <co-re-page :boxArr="boxArr" id-prop-name="id" :use-stand="true">
-                1111
-                <CoReBox :ref="`CoReBox${ind}`" v-for="(i, ind) in boxArr" :key="ind" :boxId="i.id" v-bind="i"></CoReBox>
+                <CoReBox
+                    :ref="`CoReBox${ind}`"
+                    v-for="(i, ind) in boxArr"
+                    :key="ind"
+                    :boxId="i.id"
+                    :w.sync="i.w"
+                    :h.sync="i.h"
+                    :l.sync="i.l"
+                    :t.sync="i.t"
+                ></CoReBox>
             </co-re-page>
         </div>
     </div>
@@ -54,7 +62,7 @@ export default {
         }
     },
     created() {
-        this.boxArr = Array.from({length: 100}).map((i, ind) => ({
+        this.boxArr = Array.from({length: 50}).map((i, ind) => ({
                     w: 100,
                     h: 100,
                     l: 0,
@@ -72,8 +80,8 @@ export default {
 
 <style lang="scss">
 #app {
-    height: 400px;
-    width: 100vw;
+    height: 60vh;
+    width: 90%;
     border: 1px solid red;
     position: relative;
     z-index: 0;
