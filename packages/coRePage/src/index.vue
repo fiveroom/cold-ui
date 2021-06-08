@@ -18,12 +18,11 @@
 </template>
 
 <script>
-import ResizeBox from "../../ResizeBox/src";
 import {numToFixed} from "../../tools";
 import {throttle, debounce} from "lodash";
 
 export default {
-    name: "CoRePage",
+    name: "coRePage",
     props: {
         boxArr: {
             type: Array,
@@ -133,9 +132,7 @@ export default {
         Object.assign(this.rectProp, this.rectPropRewrite);
         this.setParentSizeToBoxDe = debounce(this.setParentSizeToBox, 500);
     },
-    components: {
-        ResizeBox
-    },
+
     methods: {
         initBoxSize() {
             let rect = this.$el.getBoundingClientRect();
@@ -157,7 +154,7 @@ export default {
                 const slots = this.$slots.default;
                 slots?.forEach(item => {
                     const comp = item.componentInstance;
-                    if (comp && comp.$options.name === 'CoReBox') {
+                    if (comp && comp.$options.name === 'coReBox') {
                         if (this.compIds[comp.compId]) return;
                         this.compIds[comp.compId] = comp;
                         if(this.useStand){
@@ -229,15 +226,14 @@ export default {
         resizeStop({boxId}) {
             let obj = this.boxArrObj[boxId]
             if(obj){
-                if(!this.useStand) return;
                 if (this.topChange !== 'no') {
                     obj[this.rectProp.top] = this.topChange;
                 }
                 if (this.leftChange !== 'no') {
                     obj[this.rectProp.left] = this.leftChange;
                 }
-                this.clearStand()
             }
+            this.clearStand()
         },
         resizeEvent: throttle(function (resizingData) {
             this.pagePost(resizingData.rect);
@@ -547,6 +543,7 @@ export default {
             })
         },
         resizeBox(){
+            //TODO 初始化需要调用
             if(!this.oldBox.width) {
                 this.oldBox.width = this.box.width;
                 this.oldBox.height = this.box.height;
@@ -572,8 +569,8 @@ export default {
 </script>
 
 <style scoped lang="scss">
-@import "../../global.scss";
-
+@import "../../global.variate";
+@import "../../global.style";
 $name: 're_page';
 
 .#{$prefix}-#{$name}-home {

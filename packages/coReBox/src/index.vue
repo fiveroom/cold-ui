@@ -1,7 +1,7 @@
 <template>
     <div
         class="co-re_box-home"
-        :class="{'co-re_box-is-move': mouseAction, 'co-re_box-home-animal': this.openAnimal, 'co-re_box-home--active': this.boxActive}"
+        :class="{'co-re_box-is-move': mouseAction, 'co-re_box-home-animal': this.openAnimal}"
         :style="{ 'z-index': this.zIndex, 'will-change': this.willChange}"
         @mousedown.stop="mouseDownEvent"
         tabindex="0"
@@ -34,7 +34,7 @@ import {debounce, throttle} from "lodash";
 
 
 export default {
-    name: "CoReBox",
+    name: "coReBox",
     props: {
         openTrick: {
             type: Boolean,
@@ -430,7 +430,8 @@ export default {
 </script>
 
 <style scoped lang="scss">
-@import "../../global.scss";
+@import "../../global.variate";
+@import "../../global.style";
 $name: 're_box';
 
 $trick-width: 4px;
@@ -452,7 +453,7 @@ $trick-border: 4px solid #000;
         outline: none;
     }
 
-    &--active{
+    &:active{
         // transition: box-shadow 200ms cubic-bezier(0, 0, 0.2, 1);
         box-shadow: 0 5px 5px -3px rgba(0,0,0,.2), 0 8px 10px 1px rgba(0,0,0,.1), 0 3px 14px 2px rgba(0,0,0,.12);
     }

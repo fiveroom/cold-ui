@@ -6,11 +6,6 @@ export function numToFixed(data, num = 3) {
     return Number(a.toFixed(num))
 }
 
-
-export function setStyle(ele, name, value){
-    ele.style[name] = value;
-}
-
 export function uId(){
     return `${s4()}-${s4()}`
 }

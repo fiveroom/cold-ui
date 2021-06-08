@@ -22,12 +22,18 @@
 
 <script>
 import HelloWorld from "./components/HelloWorld";
-import {uId} from "../packages/tools";
+import {uId} from "../packages";
+
+import 'cold-ui/lib/cold-ui.css'
+import {coRePage, coReBox} from "../packages";
+// import { coReBox, coRePage } from "cold-ui";
 
 export default {
     name: 'App',
     components: {
-        HelloWorld
+        HelloWorld,
+        CoReBox: coReBox,
+        CoRePage: coRePage
     },
     data() {
         return {
@@ -62,7 +68,7 @@ export default {
         }
     },
     created() {
-        this.boxArr = Array.from({length: 100}).map((i, ind) => ({
+        this.boxArr = Array.from({length: 20}).map((i, ind) => ({
                     w: 50,
                     h: 50,
                     l: Math.random() * 1600,
