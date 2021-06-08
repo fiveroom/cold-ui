@@ -1,7 +1,7 @@
 <template>
     <div
         class="co-re_box-home"
-        :class="{'co-re_box-is-move': mouseAction, 'co-re_box-home-animal': this.openAnimal}"
+        :class="{'co-re_box-is-move': mouseAction, 'co-re_box-home-animal': this.openAnimal, 'co-re_box-home--active': this.boxActive}"
         :style="{ 'z-index': this.zIndex, 'will-change': this.willChange}"
         @mousedown.stop="mouseDownEvent"
         tabindex="0"
@@ -12,8 +12,9 @@
         <i
             class="co-re_box-move"
             data-movetype="move"
+            v-show="!lock"
         ></i>
-        <template v-if="openTrick">
+        <template v-if="openTrick && !lock">
             <i
                 class="co-re_box-trick"
                 v-for="i in trickList"
@@ -29,7 +30,7 @@
 <script>
 // event : resizing dragging resized check-box
 import { uId } from '../../tools';
-import {debounce} from "lodash";
+import {debounce, throttle} from "lodash";
 
 
 export default {
@@ -84,11 +85,14 @@ export default {
             type: Object,
             default: null
         },
-        auToParentSize: false
+        auToParentSize: false,
+        lock: {
+            type: Boolean,
+            default: false
+        }
     },
     data() {
         return {
-            lock: false,
             trickList: ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc"],
             location: {
                 translateX: 0,
@@ -113,7 +117,8 @@ export default {
             compId: uId(),
             boxActive: false,
             resizeEndDe: null,
-            getParentInfoDe: null
+            getParentInfoDe: null,
+            reloadDe: debounce(this.reload, 50)
         }
     },
     methods: {
@@ -129,6 +134,7 @@ export default {
             }
         },
         boxMove(event) {
+            if(this.lock) return;
             if (this.mouseAction) {
                 event.preventDefault();
                 // 鼠标在父元素中的位置
@@ -169,6 +175,8 @@ export default {
             }
         },
         mouseDownEvent(event) {
+            if(this.lock) return;
+            if(event.button !== 0) return
             const { movetype: moveType } = event.target.dataset;
             this.mouseAction = moveType;
             if(moveType){
@@ -200,6 +208,7 @@ export default {
             this.setTransfrom()
         },
         actionMoveByStep(step, topStu) {
+            if(this.lock) return;
             if(topStu){
                 this.top = this.verifyTop(this.top + step);
             } else {
@@ -337,7 +346,11 @@ export default {
         setWidth() {
             this.$el.style.width = this.width + 'px';
         },
+        setOpacity() {
+            this.$el.style.opacity = '1';
+        },
         reload(){
+            this.setOpacity();
             this.setTransfrom();
             this.setHeight();
             this.setWidth();
@@ -356,6 +369,7 @@ export default {
         if(this.auToParentSize){
             this.getParentInfoDe = debounce(this.getParentInfo, 500);
         }
+        // this.reloadDe = debounce(this.reload, 300);
     },
     mounted() {
         this.getParentInfo();
@@ -386,24 +400,28 @@ export default {
             immediate: true,
             handler(v) {
                 this.height = v;
+                this.reloadDe();
             }
         },
         l: {
             immediate: true,
             handler(v) {
                 this.left = v;
+                this.reloadDe();
             }
         },
         t: {
             immediate: true,
             handler(v) {
                 this.top = v;
+                this.reloadDe();
             }
         },
         w: {
             immediate: true,
             handler(v) {
                 this.width = v;
+                this.reloadDe();
             }
         }
     }
@@ -420,23 +438,21 @@ $trick-padding: 8px;
 $trick-out: -2px;
 $trick-border: 4px solid #000;
 .#{$prefix}-#{$name}-home{
-    background-color: skyblue;
     position: absolute;
     z-index: 0;
     top: 0;
     left: 0;
-    width: 100px;
-    height: 100px;
     transform-origin: 0 0;
     transition-property: box-shadow;
     transition-duration: .2s;
+    opacity: 0;
     box-shadow: 0 3px 1px -2px rgba(0,0,0,.2), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
     &:focus{
         //background-color: red;
         outline: none;
     }
 
-    &:active{
+    &--active{
         // transition: box-shadow 200ms cubic-bezier(0, 0, 0.2, 1);
         box-shadow: 0 5px 5px -3px rgba(0,0,0,.2), 0 8px 10px 1px rgba(0,0,0,.1), 0 3px 14px 2px rgba(0,0,0,.12);
     }

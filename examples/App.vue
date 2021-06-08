@@ -62,11 +62,11 @@ export default {
         }
     },
     created() {
-        this.boxArr = Array.from({length: 50}).map((i, ind) => ({
-                    w: 100,
-                    h: 100,
-                    l: 0,
-                    t: 0,
+        this.boxArr = Array.from({length: 100}).map((i, ind) => ({
+                    w: 50,
+                    h: 50,
+                    l: Math.random() * 1600,
+                    t: Math.random() * 400 ,
                     id: ind + 'box'
         }))
     },
@@ -84,6 +84,7 @@ export default {
     width: 90%;
     border: 1px solid red;
     position: relative;
+    min-height: 400px;
     z-index: 0;
 }
 </style>

@@ -6,12 +6,12 @@
         <slot></slot>
         <div
             class="co-re_page-stand co-re_page-stand-x"
-            v-show="xStand.display"
+            style="opacity: 0"
             ref="standX"
         ></div>
         <div
             class="co-re_page-stand co-re_page-stand-y"
-            v-show="yStand.display"
+            style="opacity: 0"
             ref="standY"
         ></div>
     </div>
@@ -110,14 +110,13 @@ export default {
             checkBoxes: new Set(),
             keyDownData: null,
             controlStu: false,
-            setParentSizeToBoxDe: null
+            setParentSizeToBoxDe: null,
+            resizeBoxDe: debounce(this.resizeBox, 30)
         }
     },
     watch: {
-        boxArr(nV) {
-            console.log('nV :>> ', nV);
+        boxArr() {
             this.initResizeBox()
-            // console.log('this. :>> ', this.$slots.default);
         }
     },
     mounted() {
@@ -157,10 +156,8 @@ export default {
             this.$nextTick(() => {
                 const slots = this.$slots.default;
                 slots?.forEach(item => {
-                    console.log('item :>> ', item);
                     const comp = item.componentInstance;
                     if (comp && comp.$options.name === 'CoReBox') {
-                        console.log('compIds :>> ', comp);
                         if (this.compIds[comp.compId]) return;
                         this.compIds[comp.compId] = comp;
                         if(this.useStand){
@@ -224,43 +221,52 @@ export default {
         }, 500),
         boxKeyUp(event){
             this.controlStu = event.ctrlKey;
-            this.yStand.display = false;
-            this.xStand.display = false;
+            this.clearStand();
         },
         setStepVal([add, top]){
             return [add ? this.keyStep : -this.keyStep, top]
         },
-        resizeStop({boxId, compId}) {
+        resizeStop({boxId}) {
             let obj = this.boxArrObj[boxId]
             if(obj){
                 if(!this.useStand) return;
                 if (this.topChange !== 'no') {
                     obj[this.rectProp.top] = this.topChange;
-                    this.topChange = "no";
                 }
                 if (this.leftChange !== 'no') {
                     obj[this.rectProp.left] = this.leftChange;
-                    this.leftChange = "no";
                 }
-                this.yStand.display = false;
-                this.xStand.display = false;
-                this.$nextTick().then(() => {
-                    this.compIds[compId].setTransfrom()
-                });
+                this.clearStand()
             }
         },
         resizeEvent: throttle(function (resizingData) {
             this.pagePost(resizingData.rect);
             this.blockPost(resizingData.rect, resizingData.boxId);
             if (this.xStand.display) {
-                this.$refs.standX.style.transform = `translateY(${this.xStand.top}px)`
+                this.$refs.standX.style.transform = `translateY(${this.xStand.top}px)`;
+                this.$refs.standX.style.opacity = '1';
+            } else {
+                this.$refs.standX.style.opacity = '0';
             }
             if (this.yStand.display) {
-                this.$refs.standY.style.transform = `translateX(${this.yStand.left}px)`
+                this.$refs.standY.style.transform = `translateX(${this.yStand.left}px)`;
+                this.$refs.standY.style.opacity = '1';
+            } else {
+                this.$refs.standY.style.opacity = '0';
             }
         }, 80, {
             trailing: false
         }),
+        clearStand(){
+            this.$refs.standY.style.opacity = '0';
+            this.$refs.standY.style.transform = 'translateY(0px)';
+            this.$refs.standX.style.opacity = '0';
+            this.$refs.standX.style.transform = 'translateX(0px)';
+            this.yStand.display = false;
+            this.xStand.display = false;
+            this.leftChange = "no";
+            this.topChange = "no";
+        },
         pagePost(newRect) {
             let disW = newRect.w / 2 + newRect.l;
             let disH = newRect.h / 2 + newRect.t;
@@ -526,12 +532,12 @@ export default {
         },
         bindDocEvent(){
             document.addEventListener('mousedown', this.clearCheck);
-            window.addEventListener('resize', this.resizeBox);
+            window.addEventListener('resize', this.resizeBoxDe);
             window.addEventListener('resize', this.setParentSizeToBoxDe);
         },
         clearDocEvent(){
             document.removeEventListener('mousedown', this.clearCheck);
-            window.removeEventListener('resize', this.resizeBox);
+            window.removeEventListener('resize', this.resizeBoxDe);
             window.removeEventListener('resize', this.setParentSizeToBoxDe);
 
         },
@@ -540,7 +546,7 @@ export default {
                 this.compIds[i].setParentSize(this.box);
             })
         },
-        resizeBox: throttle(function (){
+        resizeBox(){
             if(!this.oldBox.width) {
                 this.oldBox.width = this.box.width;
                 this.oldBox.height = this.box.height;
@@ -560,14 +566,7 @@ export default {
             })
             this.oldBox.width = this.box.width;
             this.oldBox.height = this.box.height;
-            this.$nextTick().then(() =>{
-                Object.keys(this.compIds).forEach(i => {
-                    this.compIds[i].reload();
-                })
-            })
-        }, 30, {
-            trailing: false
-        })
+        },
     },
 }
 </script>
@@ -582,11 +581,14 @@ $name: 're_page';
     height: 100%;
     position: relative;
     z-index: 0;
+    &:focus{
+        outline: none;
+    }
 }
 
 .#{$prefix}-#{$name}-stand {
     position: absolute;
-    z-index: 99;
+    z-index: 9999;
     transform-origin: 0 0;
     top: 0;
     left: 0;
