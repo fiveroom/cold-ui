@@ -11,13 +11,16 @@
         <i
             class="co-re_box-move"
             data-movetype="move"
+            :style="{
+                height: moveBoxHeight
+            }"
             v-show="!lock"
+            v-if="moveHand"
         ></i>
-        <template v-if="openTrick && !lock">
+        <template v-if="!lock">
             <i
                 class="co-re_box-trick"
-                v-for="i in trickList"
-                v-show="boxActive"
+                v-for="i in trickArr"
                 :key="i"
                 :class="`co-re_box-trick-${i}`"
                 :data-movetype="i"
@@ -27,22 +30,14 @@
 </template>
 
 <script>
-/**
- * TODO 1.移动高度自定义 2、点击头部不懂跳到顶部
- *
- */
 // event : resizing dragging resized check-box
-import { uId } from '../../tools';
+import { uId, numToFixed } from '../../tools';
 import { debounce } from "lodash";
 
 
 export default {
     name: "coReBox",
     props: {
-        openTrick: {
-            type: Boolean,
-            default: true,
-        },
         h: {
             type: Number,
             default: 100
@@ -92,18 +87,34 @@ export default {
         lock: {
             type: Boolean,
             default: false
+        },
+        moveBoxHeight: {
+            type: String,
+            default: '100%'
+        },
+        trickList: {
+            default: () => (["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc", "cm"]),
+            validator(val){
+                let arr = ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc", "cm"];
+                return val.every(i => arr.includes(i))
+            }
         }
+
     },
     data() {
         return {
-            trickList: ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc"],
+            trickArr: [],
             location: {
                 translateX: 0,
                 translateY: 0
             },
             sizeData: {
                 lDis: 0,
-                tDis: 0
+                tDis: 0,
+                oldTop: 0,
+                oldLeft: 0,
+                oldHeight: 0,
+                oldWidth: 0
             },
             parentDis: {
                 xV: 0,
@@ -122,7 +133,9 @@ export default {
             resizeEndDe: null,
             getParentInfoDe: null,
             reloadDe: debounce(this.reload, 50),
-            showBody: false
+            showBody: false,
+            moveHand: true
+
         }
     },
     methods: {
@@ -143,21 +156,16 @@ export default {
                 event.preventDefault();
                 // 鼠标在父元素中的位置
                 if (this.mouseAction === 'move') {
-                    this.actionMove(event.pageX - this.sizeData.lDis, event.pageY - this.sizeData.tDis);
+                    this.actionMove(event.pageX - this.sizeData.lDis , event.pageY - this.sizeData.tDis);
                 } else {
-                    let location = {};
-                    let absDisP = {
-                        xV: event.pageX - this.parentDis.xV,
-                        yV: event.pageY - this.parentDis.yV,
-                    }
                     if (this.mouseAction.includes('b'))
-                        Object.assign(location, this.actionB(absDisP))
+                        Object.assign(location, this.actionB(event.pageY - this.sizeData.tDis))
                     else if (this.mouseAction.includes('t'))
-                        Object.assign(location, this.actionT(absDisP))
+                        Object.assign(location, this.actionT(event.pageY - this.sizeData.tDis))
                     if (this.mouseAction.includes('l'))
-                        Object.assign(location, this.actionL(absDisP))
+                        Object.assign(location, this.actionL(event.pageX - this.sizeData.lDis))
                     else if (this.mouseAction.includes('r'))
-                        Object.assign(location, this.actionR(absDisP))
+                        Object.assign(location, this.actionR(event.pageX - this.sizeData.lDis))
                     this.setResize(location);
                 }
                 this.$emit('resizing', this.emitResizeData());
@@ -182,11 +190,13 @@ export default {
             if(moveType){
                 this.boxActive = true;
                 this.$emit('check-box', this.ids);
-                if(this.mouseAction === 'move'){
-                    this.sizeData = {
-                        lDis: event.pageX - this.left,
-                        tDis: event.pageY - this.top
-                    }
+                this.sizeData = {
+                    lDis: event.pageX,
+                    tDis: event.pageY,
+                    oldLeft: this.left,
+                    oldTop: this.top,
+                    oldHeight: this.height,
+                    oldWidth: this.width,
                 }
             }
         },
@@ -203,9 +213,9 @@ export default {
             }
         },
         actionMove(left, top) {
-            this.left = this.verifyLeft(left);
-            this.top = this.verifyTop(top);
-            this.setTransfrom()
+            this.left = this.verifyLeft(left + this.sizeData.oldLeft);
+            this.top = this.verifyTop(top + this.sizeData.oldTop);
+            this.setTransfrom();
         },
         actionMoveByStep(step, topStu) {
             if(this.lock) return;
@@ -229,7 +239,7 @@ export default {
             } else if (needL > this.maxValue.maxLeft) {
                 needL = this.maxValue.maxLeft
             }
-            return needL
+            return numToFixed(needL)
         },
         verifyTop(needT){
             if (needT < 0) {
@@ -237,26 +247,26 @@ export default {
             } else if (needT > this.maxValue.maxTop) {
                 needT = this.maxValue.maxTop;
             }
-            return needT
+            return numToFixed(needT)
         },
-        actionR(evt) {
-            let needW = evt.xV - this.left;
+        actionR(val) {
+            let needW = this.sizeData.oldWidth + val;
             if (needW + this.left > this.parentDis.width) {
                 needW = this.parentDis.width - this.left
             } else if (needW < this.minWidth) {
                 needW = this.minWidth
             }
-            this.width = needW;
+            this.width = numToFixed(needW);
             return {
-                width: needW
+                width: this.width
             }
         },
         setActive(val){
             this.boxActive = val;
         },
-        actionL(evt) {
-            let needW = this.width - evt.xV + this.left;
-            let needL = evt.xV;
+        actionL(val) {
+            let needW = this.sizeData.oldWidth - val;
+            let needL = this.sizeData.oldLeft + val;
             if (needL < 0) {
                 needL = 0;
                 needW = this.left + this.width;
@@ -265,16 +275,16 @@ export default {
                 needL = this.left + this.width - this.minWidth;
                 needW = this.minWidth;
             }
-            this.width = needW;
-            this.left = needL;
+            this.width = numToFixed(needW);
+            this.left = numToFixed(needL);
             return {
-                width: needW,
-                left: needL,
+                width: this.width,
+                left: this.left,
             }
         },
-        actionT(evt) {
-            let needH = this.height - evt.yV + this.top;
-            let needT = evt.yV;
+        actionT(val) {
+            let needH = this.sizeData.oldHeight - val;
+            let needT = this.sizeData.oldTop + val;
             if (needT < 0) {
                 needT = 0;
                 needH = this.top + this.height;
@@ -283,23 +293,23 @@ export default {
                 needH = this.minHeight;
                 needT = this.top + this.height - this.minHeight;
             }
-            this.height = needH;
-            this.top = needT;
+            this.height =  numToFixed(needH);
+            this.top = numToFixed(needT);
             return {
-                height: needH,
-                top: needT
+                height: this.height,
+                top: this.top
             }
         },
-        actionB(evt) {
-            let needH = evt.yV - this.top;
+        actionB(val) {
+            let needH = this.sizeData.oldHeight + val;
             if (needH + this.top > this.parentDis.height) {
                 needH = this.parentDis.height - this.top;
             } else if (needH < this.minHeight) {
                 needH = this.minHeight;
             }
-            this.height = needH;
+            this.height = numToFixed(needH);
             return {
-                height: needH
+                height: this.height
             }
         },
 
@@ -399,6 +409,17 @@ export default {
         }
     },
     watch: {
+        trickList: {
+          immediate: true,
+          handler(val){
+              console.log('val :>> ', val);
+              if(Array.isArray(val)){
+                  let a = ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc"];
+                  this.trickArr = val.filter(i => a.includes(i));
+                  this.moveHand = val.includes('cm');
+              }
+          }
+        },
         h: {
             immediate: true,
             handler(v) {
@@ -437,10 +458,12 @@ export default {
 @import "../../global.style";
 $name: 're_box';
 
-$trick-width: 4px;
+$trick-width: 6px;
+$trick-corner-width: 6px;
 $trick-padding: 8px;
 $trick-out: -2px;
-$trick-border: 4px solid #000;
+$trick-color: #6eb1eb;
+$trick-border: $trick-width solid $trick-color;
 .#{$prefix}-#{$name}-home{
     position: absolute;
     z-index: 0;
@@ -470,7 +493,7 @@ $trick-border: 4px solid #000;
     display: block;
     font-size: 1px;
     z-index: 2;
-
+    opacity: 0;
     &-tr {
         top: $trick-out;
         right: $trick-out;
@@ -520,8 +543,8 @@ $trick-border: 4px solid #000;
     }
 
     &-bl,&-tr,&-br,&-tl{
-        width: 6px;
-        height: 6px;
+        width: $trick-corner-width - $trick-out;
+        height: $trick-corner-width - $trick-out;
     }
 
     &-bl,
@@ -538,18 +561,28 @@ $trick-border: 4px solid #000;
     &-tc,
     &-bc {
         cursor: ns-resize;
-        left: $trick-padding;
+        left: $trick-corner-width + $trick-width;
         height: $trick-width;
-        right: $trick-padding;
+        right: $trick-corner-width + $trick-width;
+        background-color: $trick-color;
+
     }
 
     &-lc,
     &-rc {
         cursor: ew-resize;
-        top: $trick-padding;
-        bottom: $trick-padding;
+        top: $trick-corner-width + $trick-width;
+        bottom: $trick-corner-width + $trick-width;
         width: $trick-width;
+        background-color: $trick-color;
+
     }
+
+    &:hover{
+        opacity: 1;
+        transition: opacity .25s ease-out;
+    }
+    transition: opacity .25s ease-in;
 }
 .#{$prefix}-#{$name}-move{
     position: absolute;
@@ -559,7 +592,7 @@ $trick-border: 4px solid #000;
     left: 0;
     background-color: transparent;
     z-index: 1;
-    height: 30px;
+    min-height: 30px;
     cursor: move;
 }
 .#{$prefix}-#{$name}-body{

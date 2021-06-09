@@ -248,16 +248,16 @@ export default {
         },
         resizeStop({boxId}) {
             let obj = this.boxArrObj[boxId];
-            if (obj) {
-                if (this.xStand.value !== 'no') {
-                    obj.t = this.xStand.value;
+            this.$nextTick(() => {
+                if(this.xStand.value !== 'no'){
+                    obj.t = numToFixed(this.xStand.value);
                 }
-                if (this.yStand.value !== 'no') {
-                    obj.l = this.yStand.value;
+                if(this.yStand.value !== 'no'){
+                    obj.l = numToFixed(this.yStand.value);
                 }
-            }
-            this.clearStand()
-            this.emitOldSize();
+                this.clearStand()
+                this.emitOldSize();
+            })
         },
         emitOldSize(){
             this.$emit('update:oldWidth', this.box.width);
