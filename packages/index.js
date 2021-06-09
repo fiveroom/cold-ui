@@ -24,6 +24,6 @@ if (typeof window !== 'undefined' && window.Vue) {
 
 export default install
 
-export {coReBox, coRePage}
+export { coReBox, coRePage }
 
 export * from "./tools";

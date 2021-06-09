@@ -4,16 +4,28 @@
         <button @click="addBox">add</button>
         <button @click="setD">set Data</button>
         <div id="app">
-            <co-re-page :boxArr="boxArr" id-prop-name="id" :use-stand="true">
+            <co-re-page
+                :boxArr="boxArr"
+                id-prop-name="id"
+                :use-stand="true"
+                :rect-prop-rewrite="{
+                    width: 'width',
+                    height: 'height',
+                    top: 'top',
+                    left: 'left'
+                }"
+                :old-height="oldHeight"
+                :old-width="oldWidth"
+            >
                 <CoReBox
                     :ref="`CoReBox${ind}`"
                     v-for="(i, ind) in boxArr"
                     :key="ind"
                     :boxId="i.id"
-                    :w.sync="i.w"
-                    :h.sync="i.h"
-                    :l.sync="i.l"
-                    :t.sync="i.t"
+                    :w.sync="i.width"
+                    :h.sync="i.height"
+                    :l.sync="i.left"
+                    :t.sync="i.top"
                 ></CoReBox>
             </co-re-page>
         </div>
@@ -24,7 +36,7 @@
 import HelloWorld from "./components/HelloWorld";
 import {uId} from "../packages";
 
-import 'cold-ui/lib/cold-ui.css'
+// import 'cold-ui/lib/cold-ui.css'
 import {coRePage, coReBox} from "../packages";
 // import { coReBox, coRePage } from "cold-ui";
 
@@ -43,7 +55,9 @@ export default {
                 h: 100,
                 l: 0,
                 t: 0,
-            }
+            },
+            oldHeight: 0,
+            oldWidth: 0
         }
     },
     methods: {
@@ -68,13 +82,17 @@ export default {
         }
     },
     created() {
-        this.boxArr = Array.from({length: 20}).map((i, ind) => ({
-                    w: 50,
-                    h: 50,
-                    l: Math.random() * 1600,
-                    t: Math.random() * 400 ,
-                    id: ind + 'box'
-        }))
+        setTimeout(() => {
+            this.boxArr = Array.from({length: 1}).map((i, ind) => ({
+                width: 100,
+                height: 100,
+                left: Math.random() * 700 ,
+                top: Math.random() * 300 ,
+                id: ind + 'box'
+            }));
+            this.oldWidth = 1400;
+            this.oldHeight =  600;
+        }, 2000)
     },
     mounted(){
 

@@ -4,10 +4,9 @@
         :class="{'co-re_box-is-move': mouseAction, 'co-re_box-home-animal': this.openAnimal}"
         :style="{ 'z-index': this.zIndex, 'will-change': this.willChange}"
         @mousedown.stop="mouseDownEvent"
-        tabindex="0"
     >
-        <div class="co-re_box-body">
-            <slot>{{compId}}</slot>
+        <div class="co-re_box-body" ref="bodyEL" v-if="showBody">
+            <slot></slot>
         </div>
         <i
             class="co-re_box-move"
@@ -28,9 +27,13 @@
 </template>
 
 <script>
+/**
+ * TODO 1.移动高度自定义 2、点击头部不懂跳到顶部
+ *
+ */
 // event : resizing dragging resized check-box
 import { uId } from '../../tools';
-import {debounce, throttle} from "lodash";
+import { debounce } from "lodash";
 
 
 export default {
@@ -118,7 +121,8 @@ export default {
             boxActive: false,
             resizeEndDe: null,
             getParentInfoDe: null,
-            reloadDe: debounce(this.reload, 50)
+            reloadDe: debounce(this.reload, 50),
+            showBody: false
         }
     },
     methods: {
@@ -127,10 +131,10 @@ export default {
             const rect = parent.getBoundingClientRect();
             // 元素在页面上的位置
             this.parentDis = {
-                xV: rect.left + parent.clientLeft + window.scrollX,
-                yV: rect.top + parent.clientTop + window.scrollY,
-                width: rect.width,
-                height: rect.height
+                xV: rect.left + window.scrollX + parent.clientLeft,
+                yV: rect.top + window.scrollY + parent.clientTop,
+                width: parent.clientWidth,
+                height: parent.clientHeight
             }
         },
         boxMove(event) {
@@ -139,10 +143,6 @@ export default {
                 event.preventDefault();
                 // 鼠标在父元素中的位置
                 if (this.mouseAction === 'move') {
-                    let absDisP = {
-                        xV: event.pageX,
-                        yV: event.pageY,
-                    }
                     this.actionMove(event.pageX - this.sizeData.lDis, event.pageY - this.sizeData.tDis);
                 } else {
                     let location = {};
@@ -348,6 +348,9 @@ export default {
         },
         setOpacity() {
             this.$el.style.opacity = '1';
+            if(!this.showBody){
+                this.showBody = true;
+            }
         },
         reload(){
             this.setOpacity();
@@ -463,9 +466,6 @@ $trick-border: 4px solid #000;
     }
 }
 .#{$prefix}-#{$name}-trick {
-    //width: 8px;
-    //height: 8px;
-    //box-sizing: border-box;
     position: absolute;
     display: block;
     font-size: 1px;
@@ -565,9 +565,10 @@ $trick-border: 4px solid #000;
 .#{$prefix}-#{$name}-body{
     width: 100%;
     height: 100%;
+    position: relative;
+    z-index: 0;
 }
 .#{$prefix}-#{$name}-is-move{
     user-select: none;
-
 }
 </style>

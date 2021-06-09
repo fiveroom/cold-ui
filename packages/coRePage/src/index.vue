@@ -1,9 +1,12 @@
 <template>
-    <div class="co-re_page-home" tabindex="0"
-         @keydown.stop.prevent="boxKeyDown($event)"
-         @keyup.stop.prevent="boxKeyUp($event)"
+    <div class="co-re_page-home"
+         tabindex="0"
+         @keydown="boxKeyDown($event)"
+         @keyup="boxKeyUp($event)"
     >
-        <slot></slot>
+        <div class="co-re_page-body">
+            <slot></slot>
+        </div>
         <div
             class="co-re_page-stand co-re_page-stand-x"
             style="opacity: 0"
@@ -61,17 +64,21 @@ export default {
         oldHeight: {
             type: Number,
             default: 0,
+        },
+        autoFirstResize: {
+            default: true,
+            type: Boolean
         }
     },
     data() {
         return {
             xStand: {
                 top: 0,
-                display: false,
+                value: 'no'
             },
             yStand: {
                 left: 0,
-                display: false,
+                value: 'no'
             },
             alignDis: 4,
             box: {
@@ -86,8 +93,6 @@ export default {
                 width: 0,
                 height: 0
             },
-            leftChange: 'no',
-            topChange: 'no',
             compIds: {},
             boxArrObj: {},
             rectProp: {
@@ -109,45 +114,59 @@ export default {
             checkBoxes: new Set(),
             keyDownData: null,
             controlStu: false,
-            setParentSizeToBoxDe: null,
-            resizeBoxDe: debounce(this.resizeBox, 30)
+            setParentSizeToBoxDe: debounce(this.setParentSizeToBox, 500),
+            resizeBoxDe: debounce(this.resizeBox, 30),
+            boxArrBack: null,
         }
     },
     watch: {
-        boxArr() {
-            this.initResizeBox()
+        boxArr: {
+            immediate: true,
+            handler() {
+                this.initResizeBox()
+            }
+        },
+        oldHeight() {
+            if(this.oldHeight !== this.oldBox.height){
+                this.oldBox.height = this.oldHeight;
+                this.autoFirstResize && this.resizeBoxDe();
+            }
+        },
+        oldWidth() {
+            if(this.oldWidth !== this.oldBox.width){
+                this.oldBox.width = this.oldWidth;
+                this.autoFirstResize && this.resizeBoxDe();
+            }
         }
     },
     mounted() {
-        this.initBoxSize();
-        this.initResizeBox()
-        this.bindDocEvent()
+        this.initBoxSize()
+        this.bindDocEvent();
     },
     beforeDestroy() {
         this.clearDocEvent()
     },
     created() {
-        this.oldBox.width = this.oldWidth;
-        this.oldBox.height = this.oldHeight;
         Object.assign(this.rectProp, this.rectPropRewrite);
-        this.setParentSizeToBoxDe = debounce(this.setParentSizeToBox, 500);
     },
 
     methods: {
         initBoxSize() {
             let rect = this.$el.getBoundingClientRect();
-            this.box.height = rect.height;
-            this.box.width = rect.width;
-            this.box.centerW = rect.width / 2;
-            this.box.centerH = rect.height / 2;
-            this.box.xV = rect.left + window.scrollX;
-            this.box.yV = rect.top + window.scrollY;
+            this.box.height = this.$el.clientHeight;
+            this.box.width = this.$el.clientWidth;
+            this.box.centerW = this.box.width / 2;
+            this.box.centerH = this.box.height / 2;
+            this.box.xV = rect.left + window.scrollX + this.$el.clientLeft;
+            this.box.yV = rect.top + window.scrollY + this.$el.clientTop;
         },
         initResizeBox() {
             this.boxArrObj = {};
             if (this.idPropName) {
-                this.boxArr.forEach(i => {
-                    i[this.idPropName] && (this.boxArrObj[i[this.idPropName]] = i);
+                this.boxArrBack = this.boxArr.map(i => {
+                    let proxyObj = this.proxyRect(i);
+                    i[this.idPropName] && (this.boxArrObj[i[this.idPropName]] = proxyObj);
+                    return proxyObj
                 })
             }
             this.$nextTick(() => {
@@ -157,11 +176,11 @@ export default {
                     if (comp && comp.$options.name === 'coReBox') {
                         if (this.compIds[comp.compId]) return;
                         this.compIds[comp.compId] = comp;
-                        if(this.useStand){
+                        if (this.useStand) {
                             comp.$on('resizing', this.resizeEvent.bind(this));
                             comp.$on('resized', this.resizeStop.bind(this));
                         }
-                        if(this.useKeyControl){
+                        if (this.useKeyControl) {
                             comp.$on('check-box', this.getActiveBox.bind(this));
                             comp.$on('uncheck-box', this.getUnActiveBox.bind(this));
                         }
@@ -170,10 +189,10 @@ export default {
                 this.setParentSizeToBox()
             })
         },
-        getActiveBox({compId}){
-            if(this.controlStu){
+        getActiveBox({compId}) {
+            if (this.controlStu) {
                 let stu = this.checkBoxes.has(compId);
-                if(this.checkBoxes.has(compId)){
+                if (this.checkBoxes.has(compId)) {
                     this.checkBoxes.delete(compId);
                 } else {
                     this.checkBoxes.add(compId);
@@ -189,79 +208,86 @@ export default {
             }
 
         },
-        getUnActiveBox({compId}){
+        getUnActiveBox({compId}) {
             this.checkBoxes.delete(compId);
         },
-        boxKeyDown(event){
+        boxKeyDown(event) {
             this.controlStu = event.ctrlKey;
-            if(!this.checkBoxes.size) return;
-            if(!this.keyDownData){
+            if (!this.checkBoxes.size) return;
+            if (!this.keyDownData) {
                 this.keyDownData = {}
             }
-            const done =this.keyDownEvent[event.code || event.keyCode];
-            if(done){
+            const done = this.keyDownEvent[event.code || event.keyCode];
+            if (done) {
+                event.stoppropagation();
+                event.preventdefault();
                 this.checkBoxes.forEach(val => {
-                    this.keyDownData[val] =  this.compIds[val].actionMoveByStep.apply(null, this.setStepVal(done))
+                    this.keyDownData[val] = this.compIds[val].actionMoveByStep.apply(null, this.setStepVal(done))
                 });
                 this.boxKeyDownEnd();
             }
 
         },
-        boxKeyDownEnd: debounce(function(){
+        boxKeyDownEnd: debounce(function () {
             Object.keys(this.keyDownData).forEach(val => {
                 const source = this.keyDownData[val];
                 let obj = this.boxArrObj[source.boxId];
-                obj[this.rectProp.top] = source.top;
-                obj[this.rectProp.left] = source.left;
+                if (obj) {
+                    obj.t = source.top;
+                    obj.l = source.left;
+                }
             })
             this.keyDownData = null;
         }, 500),
-        boxKeyUp(event){
+        boxKeyUp(event) {
             this.controlStu = event.ctrlKey;
             this.clearStand();
         },
-        setStepVal([add, top]){
+        setStepVal([add, top]) {
             return [add ? this.keyStep : -this.keyStep, top]
         },
         resizeStop({boxId}) {
-            let obj = this.boxArrObj[boxId]
-            if(obj){
-                if (this.topChange !== 'no') {
-                    obj[this.rectProp.top] = this.topChange;
+            let obj = this.boxArrObj[boxId];
+            if (obj) {
+                if (this.xStand.value !== 'no') {
+                    obj.t = this.xStand.value;
                 }
-                if (this.leftChange !== 'no') {
-                    obj[this.rectProp.left] = this.leftChange;
+                if (this.yStand.value !== 'no') {
+                    obj.l = this.yStand.value;
                 }
             }
             this.clearStand()
+            this.emitOldSize();
+        },
+        emitOldSize(){
+            this.$emit('update:oldWidth', this.box.width);
+            this.$emit('update:oldHeight', this.box.height);
         },
         resizeEvent: throttle(function (resizingData) {
             this.pagePost(resizingData.rect);
             this.blockPost(resizingData.rect, resizingData.boxId);
-            if (this.xStand.display) {
+            if (this.xStand.value !== 'no') {
                 this.$refs.standX.style.transform = `translateY(${this.xStand.top}px)`;
                 this.$refs.standX.style.opacity = '1';
             } else {
                 this.$refs.standX.style.opacity = '0';
             }
-            if (this.yStand.display) {
+            if (this.yStand.value !== 'no') {
                 this.$refs.standY.style.transform = `translateX(${this.yStand.left}px)`;
                 this.$refs.standY.style.opacity = '1';
             } else {
                 this.$refs.standY.style.opacity = '0';
             }
-        }, 80, {
+        }, 50, {
             trailing: false
         }),
-        clearStand(){
+        clearStand() {
             this.$refs.standY.style.opacity = '0';
             this.$refs.standY.style.transform = 'translateY(0px)';
             this.$refs.standX.style.opacity = '0';
             this.$refs.standX.style.transform = 'translateX(0px)';
-            this.yStand.display = false;
-            this.xStand.display = false;
-            this.leftChange = "no";
-            this.topChange = "no";
+            this.yStand.value = "no";
+            this.xStand.value = "no";
         },
         pagePost(newRect) {
             let disW = newRect.w / 2 + newRect.l;
@@ -270,56 +296,48 @@ export default {
                 Math.abs(disW - this.box.centerW) < this.alignDis &&
                 Math.abs(disW - this.box.centerW) !== 0
             ) {
-                this.leftChange = this.box.centerW - newRect.w / 2;
+                this.yStand.value = this.box.centerW - newRect.w / 2;
                 this.yStand.left = this.box.centerW;
-                this.yStand.display = true;
             } else if (
                 Math.abs(newRect.l - this.box.centerW) < this.alignDis &&
                 Math.abs(newRect.l - this.box.centerW) !== 0
             ) {
-                this.leftChange = this.box.centerW;
+                this.yStand.value = this.box.centerW;
                 this.yStand.left = this.box.centerW;
-                this.yStand.display = true;
             } else if (
                 Math.abs(newRect.l + newRect.w - this.box.centerW) < this.alignDis &&
                 Math.abs(newRect.l + newRect.w - this.box.centerW) !== 0
             ) {
-                this.leftChange = this.box.centerW - newRect.w;
+                this.yStand.value = this.box.centerW - newRect.w;
                 this.yStand.left = this.box.centerW;
-                this.yStand.display = true;
             } else {
-                this.leftChange = "no";
-                this.yStand.display = false;
+                this.yStand.value = "no";
             }
             if (
                 Math.abs(disH - this.box.centerH) < this.alignDis &&
                 Math.abs(disH - this.box.centerH) !== 0
             ) {
                 this.xStand.top = this.box.centerH;
-                this.topChange = this.box.centerH - newRect.h / 2;
-                this.xStand.display = true;
+                this.xStand.value = this.box.centerH - newRect.h / 2;
             } else if (
                 Math.abs(newRect.t - this.box.centerH) < this.alignDis &&
                 Math.abs(newRect.t - this.box.centerH) !== 0
             ) {
                 this.xStand.top = this.box.centerH;
-                this.topChange = this.box.centerH;
-                this.xStand.display = true;
+                this.xStand.value = this.box.centerH;
             } else if (
                 Math.abs(newRect.t + newRect.h - this.box.centerH) < this.alignDis &&
                 Math.abs(newRect.t + newRect.h - this.box.centerH) !== 0
             ) {
                 this.xStand.top = this.box.centerH;
-                this.topChange = this.box.centerH - newRect.h;
-                this.xStand.display = true;
+                this.xStand.value = this.box.centerH - newRect.h;
             } else {
-                this.xStand.display = false;
-                this.topChange = "no";
+                this.xStand.value = "no";
             }
 
         },
         blockPost(newRect, moduleId) {
-            if (this.boxArr.length < 1) return;
+            if (this.boxArrBack.length < 1) return;
             let resTopArr = [];
             let resLeftArr = [];
             let resBotmArr = [];
@@ -330,8 +348,8 @@ export default {
             let resbTArr = [];
             let resrLArr = [];
             let reslRArr = [];
-            this.boxArr.forEach((it) => {
-                if(it[this.idPropName] === moduleId) return;
+            this.boxArrBack.forEach((it) => {
+                if (it[this.idPropName] === moduleId) return;
                 resTopArr.push({
                     dis: Math.abs(it.t - newRect.t),
                     obj: it,
@@ -389,7 +407,7 @@ export default {
             });
             // 边对齐
             // left right
-            if (this.leftChange === "no") {
+            if (this.yStand.value === "no") {
                 let leftObjEle = this.findMin(resLeftArr);
                 let leftObjCenEle = this.findMin(resLevArr); //水平
                 let rightObjEle = this.findMin(resRightArr);
@@ -421,37 +439,31 @@ export default {
                     lREle && Math.abs(lREle.l + lREle.w - newRect.l);
                 if (leftObjCenEle && leftCenDis < this.alignDis && leftCenDis !== 0) {
                     this.yStand.left =
-                        leftObjCenEle.l + leftObjCenEle.w / 2 ;
-                    this.leftChange =
+                        leftObjCenEle.l + leftObjCenEle.w / 2;
+                    this.yStand.value =
                         leftObjCenEle.l +
                         leftObjCenEle.w / 2 -
                         newRect.w / 2;
-                    this.yStand.display = true;
                 } else if (leftObjEle && leftDis < this.alignDis && leftDis !== 0) {
-                    this.leftChange = leftObjEle.l;
-                    this.yStand.left = this.leftChange;
-                    this.yStand.display = true;
+                    this.yStand.value = leftObjEle.l;
+                    this.yStand.left = this.yStand.value;
                 } else if (rLEle && rLEleDis < this.alignDis && rLEleDis !== 0) {
-                    this.leftChange = rLEle.l - newRect.w;
-                    this.yStand.left = rLEle.l ;
-                    this.yStand.display = true;
+                    this.yStand.value = rLEle.l - newRect.w;
+                    this.yStand.left = rLEle.l;
                 } else if (lREle && lREleDis < this.alignDis && lREleDis !== 0) {
-                    this.leftChange = lREle.l + lREle.w;
-                    this.yStand.left = this.leftChange;
-                    this.yStand.display = true;
+                    this.yStand.value = lREle.l + lREle.w;
+                    this.yStand.left = this.yStand.value;
                 } else if (rightObjEle && rightDis < this.alignDis && rightDis !== 0) {
-                    this.leftChange =
+                    this.yStand.value =
                         rightObjEle.l + rightObjEle.w - newRect.w;
                     this.yStand.left =
                         rightObjEle.l + rightObjEle.w;
-                    this.yStand.display = true;
                 } else {
-                    this.leftChange = "no";
-                    this.yStand.display = false;
+                    this.yStand.value = "no";
                 }
             }
             // t bottom
-            if (this.topChange === "no") {
+            if (this.xStand.value === "no") {
                 let topObjEle = this.findMin(resTopArr);
                 let topObjCenEle = this.findMin(resVerArr); //垂直
                 let bottomObjCenEle = this.findMin(resBotmArr);
@@ -481,84 +493,116 @@ export default {
                 if (topObjCenEle && topCenDis < this.alignDis && topCenDis !== 0) {
                     this.xStand.top =
                         topObjCenEle.t + topObjCenEle.h / 2;
-                    this.topChange =
+                    this.xStand.value =
                         topObjCenEle.t +
                         topObjCenEle.h / 2 -
                         newRect.h / 2;
-                    this.xStand.display = true;
                 } else if (tbEle && tbEleDis < this.alignDis && tbEleDis !== 0) {
-                    this.topChange = tbEle.t + tbEle.h;
-                    this.xStand.top = this.topChange;
-                    this.xStand.display = true;
+                    this.xStand.value = tbEle.t + tbEle.h;
+                    this.xStand.top = this.xStand.value;
                 } else if (topObjEle && topDis < this.alignDis && topDis !== 0) {
-                    this.topChange = topObjEle.t;
-                    this.xStand.top = this.topChange;
-                    this.xStand.display = true;
+                    this.xStand.value = topObjEle.t;
+                    this.xStand.top = this.xStand.value;
                 } else if (bTEle && bTEleDis < this.alignDis && bTEleDis !== 0) {
-                    this.topChange = bTEle.t - newRect.h;
+                    this.xStand.value = bTEle.t - newRect.h;
                     this.xStand.top = bTEle.t;
-                    this.xStand.display = true;
                 } else if (
                     bottomObjCenEle &&
                     bottomDis < this.alignDis &&
                     bottomDis !== 0
                 ) {
-                    this.topChange =
+                    this.xStand.value =
                         bottomObjCenEle.t +
                         bottomObjCenEle.h -
                         newRect.h;
                     this.xStand.top =
-                        bottomObjCenEle.t + bottomObjCenEle.h ;
-                    this.xStand.display = true;
+                        bottomObjCenEle.t + bottomObjCenEle.h;
                 } else {
-                    this.topChange = 'no';
-                    this.xStand.display = false;
+                    this.xStand.value = 'no';
                 }
             }
+        },
+        proxyRect(target) {
+            if (!target) return
+            let v = this;
+            return new Proxy(target, {
+                get(tar, p) {
+                    switch (p) {
+                        case 'l':
+                            return tar[v.rectPropRewrite.left || 'l']
+                        case 't':
+                            return tar[v.rectPropRewrite.top || 't']
+                        case 'w':
+                            return tar[v.rectPropRewrite.width || 'w']
+                        case 'h':
+                            return tar[v.rectPropRewrite.height || 'h']
+                        default:
+                            return tar[p]
+                    }
+                },
+                set(tar, p, value) {
+                    switch (p) {
+                        case 'l':
+                           tar[v.rectPropRewrite.left || 'l'] = value;
+                           break
+                        case 't':
+                             tar[v.rectPropRewrite.top || 't'] = value;
+                            break
+                        case 'w':
+                            tar[v.rectPropRewrite.width || 'w'] = value;
+                            break
+                        case 'h':
+                             tar[v.rectPropRewrite.height || 'h'] = value;
+                             break
+                        default:
+                            tar[p] = value
+                    }
+                    return true
+                }
+            });
         },
         findMin(arr) {
             arr.sort((a, b) => a.dis - b.dis);
             return (arr[0] && arr[0].obj) || null;
         },
-        clearCheck(){
+        clearCheck() {
             this.checkBoxes.clear();
             this.checkBoxes.forEach(i => {
                 this.compIds[i].setActive(false)
             })
         },
-        bindDocEvent(){
+        bindDocEvent() {
             document.addEventListener('mousedown', this.clearCheck);
             window.addEventListener('resize', this.resizeBoxDe);
             window.addEventListener('resize', this.setParentSizeToBoxDe);
         },
-        clearDocEvent(){
+        clearDocEvent() {
             document.removeEventListener('mousedown', this.clearCheck);
             window.removeEventListener('resize', this.resizeBoxDe);
             window.removeEventListener('resize', this.setParentSizeToBoxDe);
 
         },
-        setParentSizeToBox(){
+        setParentSizeToBox() {
             Object.keys(this.compIds).forEach(i => {
                 this.compIds[i].setParentSize(this.box);
             })
         },
-        resizeBox(){
-            //TODO 初始化需要调用
-            if(!this.oldBox.width) {
-                this.oldBox.width = this.box.width;
-                this.oldBox.height = this.box.height;
+        resizeBox() {
+            if (!this.oldBox.width) {
+                this.oldBox.width = this.oldWidth || this.box.width;
+                this.oldBox.height = this.oldHeight || this.box.height;
             }
             this.initBoxSize()
             let ratioW = this.oldBox.width / this.box.width;
             let ratioH = this.oldBox.height / this.box.height;
-            this.boxArr.forEach(item => {
-                if (ratioW !== 1) {
-                    item.w = numToFixed(item.w / ratioW);
-                    item.l = numToFixed(item.l / ratioW);
-                }
+            this.boxArrBack.forEach(item => {
                 if (ratioH !== 1) {
-                    item.h = numToFixed(item.h / ratioH);
-                    item.t = numToFixed(item.t / ratioH);
+                    item[this.rectPropRewrite.height || 'h'] = numToFixed(item[this.rectPropRewrite.height || 'h'] / ratioH);
+                    item[this.rectPropRewrite.top || 't'] = numToFixed(item[this.rectPropRewrite.top || 't'] / ratioH);
+                }
+                if (ratioW !== 1) {
+                    item[this.rectPropRewrite.width || 'w'] = numToFixed(item[this.rectPropRewrite.width || 'w'] / ratioW);
+                    item[this.rectPropRewrite.left || 'l'] = numToFixed(item[this.rectPropRewrite.left || 'l'] / ratioW);
                 }
             })
             this.oldBox.width = this.box.width;
@@ -571,36 +615,48 @@ export default {
 <style scoped lang="scss">
 @import "../../global.variate";
 @import "../../global.style";
+
 $name: 're_page';
+.#{$prefix}-#{$name} {
+    &-home {
 
-.#{$prefix}-#{$name}-home {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    z-index: 0;
-    &:focus{
-        outline: none;
-    }
-}
-
-.#{$prefix}-#{$name}-stand {
-    position: absolute;
-    z-index: 9999;
-    transform-origin: 0 0;
-    top: 0;
-    left: 0;
-    display: block;
-
-    &-x {
-        height: 0;
         width: 100%;
-        border-top: 1px dashed #6eb1eb;
+        height: 100%;
+        position: relative;
+        z-index: 0;
+        box-sizing: border-box;
+        &:focus {
+            outline: none;
+        }
     }
 
-    &-y {
+    &-stand {
+        position: absolute;
+        z-index: 9999;
+        transform-origin: 0 0;
+        top: 0;
+        left: 0;
+        display: block;
+
+        &-x {
+            height: 0;
+            width: 100%;
+            border-top: 1px dashed #6eb1eb;
+            transform: translateY(0)
+        }
+
+        &-y {
+            height: 100%;
+            width: 0;
+            border-right: 1px dashed #6eb1eb;
+            transform: translateX(0)
+        }
+    }
+
+    &-body {
+        position: relative;
         height: 100%;
-        width: 0;
-        border-right: 1px dashed #6eb1eb;
+        width: 100%;
     }
 }
 </style>
