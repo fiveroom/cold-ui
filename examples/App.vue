@@ -2,7 +2,7 @@
 
     <div>
         <button @click="addBox">add</button>
-        <button @click="setD">set Data</button>
+        <button @click="box.lock = !box.lock">set Data</button>
         <div id="app">
             <co-re-page
                 :boxArr="boxArr"
@@ -26,6 +26,7 @@
                     :h.sync="i.height"
                     :l.sync="i.left"
                     :t.sync="i.top"
+                    :lock="i.lock"
                 ></CoReBox>
             </co-re-page>
         </div>
@@ -57,7 +58,15 @@ export default {
                 t: 0,
             },
             oldHeight: 0,
-            oldWidth: 0
+            oldWidth: 0,
+            box: {
+                width: 100,
+                height: 100,
+                left: Math.random() * 700 ,
+                top: Math.random() * 300 ,
+                id: 'box',
+                lock: false
+            }
         }
     },
     methods: {
@@ -83,13 +92,7 @@ export default {
     },
     created() {
         setTimeout(() => {
-            this.boxArr = Array.from({length: 1}).map((i, ind) => ({
-                width: 100,
-                height: 100,
-                left: Math.random() * 700 ,
-                top: Math.random() * 300 ,
-                id: ind + 'box'
-            }));
+            this.boxArr = Array.from({length: 1}).map((i, ind) => this.box);
             this.oldWidth = 1400;
             this.oldHeight =  600;
         }, 2000)

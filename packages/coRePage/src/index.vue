@@ -9,12 +9,10 @@
         </div>
         <div
             class="co-re_page-stand co-re_page-stand-x"
-            style="opacity: 0"
             ref="standX"
         ></div>
         <div
             class="co-re_page-stand co-re_page-stand-y"
-            style="opacity: 0"
             ref="standY"
         ></div>
     </div>
@@ -219,8 +217,8 @@ export default {
             }
             const done = this.keyDownEvent[event.code || event.keyCode];
             if (done) {
-                event.stoppropagation();
-                event.preventdefault();
+                event.stopPropagation();
+                event.preventDefault();
                 this.checkBoxes.forEach(val => {
                     this.keyDownData[val] = this.compIds[val].actionMoveByStep.apply(null, this.setStepVal(done))
                 });
@@ -637,7 +635,7 @@ $name: 're_page';
         top: 0;
         left: 0;
         display: block;
-
+        opacity: 0;
         &-x {
             height: 0;
             width: 100%;

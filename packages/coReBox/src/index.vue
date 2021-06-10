@@ -1,7 +1,7 @@
 <template>
     <div
         class="co-re_box-home"
-        :class="{'co-re_box-is-move': mouseAction, 'co-re_box-home-animal': this.openAnimal}"
+        :class="{'co-re_box-is-move': mouseAction, 'co-re_box-home-animal': this.openAnimal, 'co-re_box-home-check': boxActive}"
         :style="{ 'z-index': this.zIndex, 'will-change': this.willChange}"
         @mousedown.stop="mouseDownEvent"
     >
@@ -22,7 +22,7 @@
                 class="co-re_box-trick"
                 v-for="i in trickArr"
                 :key="i"
-                :class="`co-re_box-trick-${i}`"
+                :class="[`co-re_box-trick-${i}`, trickClass(i)]"
                 :data-movetype="i"
             ></i>
         </template>
@@ -139,6 +139,9 @@ export default {
         }
     },
     methods: {
+        trickClass(val){
+          return !!this.mouseAction ? (this.mouseAction === val ? 'co-re_box-trick--active': '') : 'co-re_box-trick-hover'
+        },
         getParentInfo() {
             const parent = this.$el.offsetParent;
             const rect = parent.getBoundingClientRect();
@@ -151,7 +154,6 @@ export default {
             }
         },
         boxMove(event) {
-            if(this.lock) return;
             if (this.mouseAction) {
                 event.preventDefault();
                 // 鼠标在父元素中的位置
@@ -386,7 +388,6 @@ export default {
     },
     mounted() {
         this.getParentInfo();
-        this.addEvent();
     },
     beforeDestroy() {
         this.clearEvent();
@@ -412,7 +413,6 @@ export default {
         trickList: {
           immediate: true,
           handler(val){
-              console.log('val :>> ', val);
               if(Array.isArray(val)){
                   let a = ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc"];
                   this.trickArr = val.filter(i => a.includes(i));
@@ -447,6 +447,17 @@ export default {
                 this.width = v;
                 this.reloadDe();
             }
+        },
+        lock: {
+            immediate: true,
+            handler(v){
+                if(!v){
+                    this.addEvent()
+                } else {
+                    this.mouseDownOther();
+                    this.clearEvent()
+                }
+            }
         }
     }
 
@@ -462,8 +473,9 @@ $trick-width: 6px;
 $trick-corner-width: 6px;
 $trick-padding: 8px;
 $trick-out: -2px;
-$trick-color: #6eb1eb;
+$trick-color: #007fd4;
 $trick-border: $trick-width solid $trick-color;
+
 .#{$prefix}-#{$name}-home{
     position: absolute;
     z-index: 0;
@@ -486,6 +498,10 @@ $trick-border: $trick-width solid $trick-color;
     &-animal{
         transition-property: all;
         transition-duration: .2s;
+    }
+    &-check{
+        outline: 2px dashed #6eb1eb;
+        outline-offset: 1px;
     }
 }
 .#{$prefix}-#{$name}-trick {
@@ -578,9 +594,12 @@ $trick-border: $trick-width solid $trick-color;
 
     }
 
-    &:hover{
+    &-hover:hover{
         opacity: 1;
         transition: opacity .25s ease-out;
+    }
+    &--active{
+        opacity: 1;
     }
     transition: opacity .25s ease-in;
 }
