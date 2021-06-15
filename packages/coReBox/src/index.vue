@@ -1,11 +1,11 @@
 <template>
     <div
         class="co-re_box-home"
-        :class="{'co-re_box-is-move': mouseAction, 'co-re_box-home-animal': this.openAnimal, 'co-re_box-home-check': boxActive}"
-        :style="{ 'z-index': this.zIndex, 'will-change': this.willChange}"
+        :class="{'co-re_box-home-is-move': mouseAction, 'co-re_box-home-check': boxActive}"
+        :style="{ 'z-index': this.zIndex}"
         @mousedown.stop="mouseDownEvent"
     >
-        <div class="co-re_box-body" ref="bodyEL" v-if="showBody">
+        <div class="co-re_box-body" ref="bodyEL">
             <slot></slot>
         </div>
         <i
@@ -56,11 +56,11 @@ export default {
         },
         minWidth: {
             type: Number,
-            default: 50
+            default: 20
         },
         minHeight: {
             type: Number,
-            default: 50
+            default: 20
         },
         zIndex: {
             type: Number,
@@ -73,10 +73,6 @@ export default {
         boxId: {
             type: [String, Number],
             default: ''
-        },
-        openAnimal: {
-          type: Boolean,
-          default: false
         },
         getSizeFunc: Function,
         parentSize: {
@@ -133,14 +129,12 @@ export default {
             resizeEndDe: null,
             getParentInfoDe: null,
             reloadDe: debounce(this.reload, 50),
-            showBody: false,
             moveHand: true
-
         }
     },
     methods: {
         trickClass(val){
-          return !!this.mouseAction ? (this.mouseAction === val ? 'co-re_box-trick--active': '') : 'co-re_box-trick-hover'
+          return !!this.mouseAction ? (this.mouseAction === val ? 'co-re_box-trick--active': '') : ''
         },
         getParentInfo() {
             const parent = this.$el.offsetParent;
@@ -360,9 +354,6 @@ export default {
         },
         setOpacity() {
             this.$el.style.opacity = '1';
-            if(!this.showBody){
-                this.showBody = true;
-            }
         },
         reload(){
             this.setOpacity();
@@ -469,16 +460,18 @@ export default {
 @import "../../global.style";
 $name: 're_box';
 
-$trick-width: 6px;
+$trick-width: 10px;
 $trick-corner-width: 6px;
 $trick-padding: 8px;
-$trick-out: -2px;
-$trick-color: #007fd4;
-$trick-border: $trick-width solid $trick-color;
-
+$trick-out: -1px;
+$trick-box-out: - $trick-width / 2;
+$trick-show-size: 2px;
+$trick-split: 8px;
+$trick-border: $trick-show-size solid $trick-color;
 .#{$prefix}-#{$name}-home{
     position: absolute;
     z-index: 0;
+    will-change: auto;
     top: 0;
     left: 0;
     transform-origin: 0 0;
@@ -500,16 +493,101 @@ $trick-border: $trick-width solid $trick-color;
         transition-duration: .2s;
     }
     &-check{
-        outline: 2px dashed #6eb1eb;
-        outline-offset: 1px;
+        //outline: 1px dashed $trick-color;
+        .#{$prefix}-#{$name}-trick{
+            &-bl,&-tr,&-br,&-tl{
+                opacity: 1;
+            }
+        }
+    }
+    &-is-move{
+        user-select: none;
+        will-change: transform;
     }
 }
+
 .#{$prefix}-#{$name}-trick {
     position: absolute;
     display: block;
     font-size: 1px;
     z-index: 2;
-    opacity: 0;
+    &-tc,&-bc,&-lc,&-rc{
+        display: flex;
+        &::after{
+            content: "";
+            display: block;
+            background-color: $trick-color;
+            border-radius: 2px;
+            transition-property: opacity;
+            transition-timing-function: ease-in;
+            transition-duration: .15s;
+            opacity: 0;
+        }
+        &:hover::after{
+            opacity: 1;
+            //transition-property: opacity;
+            transition-duration: .25s;
+            transition-timing-function: ease-out;
+        }
+    }
+
+    &-tc {
+        top: $trick-box-out;
+    }
+
+    &-bc {
+        bottom: $trick-box-out;
+    }
+    &-bc,&-tc{
+        align-items: center;
+        justify-content: center;
+        cursor: ns-resize;
+        left: $trick-corner-width + $trick-split;
+        height: $trick-width;
+        right: $trick-corner-width + $trick-split;
+        &::after{
+            transform-origin: bottom;
+            //transform: scaleX(0.4);
+            width: 100%;
+            height: $trick-show-size;
+        }
+        &:hover::after{
+            //transform: scaleX(1);
+        }
+        &.co-re_box-trick--active::after{
+            //transform: scaleX(1);
+            opacity: 1;
+        }
+    }
+    &-lc {
+        left: $trick-box-out;
+    }
+
+    &-rc {
+        right: $trick-box-out;
+
+    }
+    &-lc,&-rc{
+        justify-content: center;
+        align-items: center;
+        cursor: ew-resize;
+        top: $trick-corner-width + $trick-split;
+        bottom: $trick-corner-width + $trick-split;
+        width: $trick-width;
+        &::after{
+            transform-origin: left;
+            //transform: scaleY(0.4);
+            height: 100%;
+            width: $trick-show-size;
+        }
+        &:hover::after{
+            //transform: scaleY(1);
+        }
+        &.co-re_box-trick--active::after{
+            //transform: scaleY(1);
+            opacity: 1;
+        }
+    }
     &-tr {
         top: $trick-out;
         right: $trick-out;
@@ -525,11 +603,6 @@ $trick-border: $trick-width solid $trick-color;
         border-top: $trick-border;
         border-left: $trick-border;
     }
-
-    &-tc {
-        top: $trick-out;
-    }
-
     &-br {
         bottom: $trick-out;
         right: $trick-out;
@@ -546,21 +619,18 @@ $trick-border: $trick-width solid $trick-color;
         border-bottom-left-radius: 2px;
     }
 
-    &-bc {
-        bottom: $trick-out;
-    }
-
-    &-lc {
-        left: $trick-out;
-    }
-
-    &-rc {
-        right: $trick-out;
-    }
-
     &-bl,&-tr,&-br,&-tl{
-        width: $trick-corner-width - $trick-out;
-        height: $trick-corner-width - $trick-out;
+        opacity: 0;
+        width: $trick-corner-width + $trick-show-size + $trick-out;
+        height: $trick-corner-width + $trick-show-size + $trick-out;
+        &:hover{
+            opacity: 1;
+            transition: opacity .25s ease-out;
+        }
+        transition: opacity .25s ease-in;
+        &.co-re_box-trick--active{
+            opacity: 1;
+        }
     }
 
     &-bl,
@@ -572,36 +642,6 @@ $trick-border: $trick-width solid $trick-color;
     &-tl {
         cursor: nwse-resize;
     }
-
-
-    &-tc,
-    &-bc {
-        cursor: ns-resize;
-        left: $trick-corner-width + $trick-width;
-        height: $trick-width;
-        right: $trick-corner-width + $trick-width;
-        background-color: $trick-color;
-
-    }
-
-    &-lc,
-    &-rc {
-        cursor: ew-resize;
-        top: $trick-corner-width + $trick-width;
-        bottom: $trick-corner-width + $trick-width;
-        width: $trick-width;
-        background-color: $trick-color;
-
-    }
-
-    &-hover:hover{
-        opacity: 1;
-        transition: opacity .25s ease-out;
-    }
-    &--active{
-        opacity: 1;
-    }
-    transition: opacity .25s ease-in;
 }
 .#{$prefix}-#{$name}-move{
     position: absolute;
@@ -620,7 +660,5 @@ $trick-border: $trick-width solid $trick-color;
     position: relative;
     z-index: 0;
 }
-.#{$prefix}-#{$name}-is-move{
-    user-select: none;
-}
+
 </style>

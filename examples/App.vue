@@ -92,7 +92,14 @@ export default {
     },
     created() {
         setTimeout(() => {
-            this.boxArr = Array.from({length: 1}).map((i, ind) => this.box);
+            this.boxArr = Array.from({length: 4}).map((i, ind) => ({
+                width: 100,
+                height: 100,
+                left: Math.random() * 700 ,
+                top: Math.random() * 300 ,
+                id: 'box' + ind,
+                lock: false
+            }));
             this.oldWidth = 1400;
             this.oldHeight =  600;
         }, 2000)

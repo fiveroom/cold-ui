@@ -1,1 +1,6 @@
 vue.config.js
+.editorconfig
+
+.idea
+packages
+babel.config.js

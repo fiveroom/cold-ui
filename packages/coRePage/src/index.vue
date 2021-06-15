@@ -639,14 +639,14 @@ $name: 're_page';
         &-x {
             height: 0;
             width: 100%;
-            border-top: 1px dashed #6eb1eb;
+            border-top: 1px dashed $trick-color;
             transform: translateY(0)
         }
 
         &-y {
             height: 100%;
             width: 0;
-            border-right: 1px dashed #6eb1eb;
+            border-right: 1px dashed $trick-color;
             transform: translateX(0)
         }
     }
