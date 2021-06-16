@@ -15,6 +15,8 @@
             class="co-re_page-stand co-re_page-stand-y"
             ref="standY"
         ></div>
+        <object height="100%" width="100%" style="pointer-events: none" type="text/html" ref="objectHtml"></object>
+        <canvas class=""></canvas>
     </div>
 </template>
 
@@ -571,13 +573,15 @@ export default {
         },
         bindDocEvent() {
             document.addEventListener('mousedown', this.clearCheck);
-            window.addEventListener('resize', this.resizeBoxDe);
-            window.addEventListener('resize', this.setParentSizeToBoxDe);
+            this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.resizeBoxDe);
+            this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.setParentSizeToBoxDe);
+            // window.addEventListener('resize', this.resizeBoxDe);
+            // window.addEventListener('resize', this.setParentSizeToBoxDe);
         },
         clearDocEvent() {
             document.removeEventListener('mousedown', this.clearCheck);
-            window.removeEventListener('resize', this.resizeBoxDe);
-            window.removeEventListener('resize', this.setParentSizeToBoxDe);
+            // window.removeEventListener('resize', this.resizeBoxDe);
+            // window.removeEventListener('resize', this.setParentSizeToBoxDe);
 
         },
         setParentSizeToBox() {
@@ -652,7 +656,7 @@ $name: 're_page';
     }
 
     &-body {
-        position: relative;
+        position: absolute;
         height: 100%;
         width: 100%;
     }
