@@ -34,7 +34,6 @@
 import { uId, numToFixed } from '../../tools';
 import { debounce } from "lodash";
 
-
 export default {
     name: "coReBox",
     props: {
@@ -493,12 +492,7 @@ $trick-border: $trick-show-size solid $trick-color;
         transition-duration: .2s;
     }
     &-check{
-        //outline: 1px dashed $trick-color;
-        .#{$prefix}-#{$name}-trick{
-            &-bl,&-tr,&-br,&-tl{
-                opacity: 1;
-            }
-        }
+        outline: 1px dashed $trick-color;
     }
     &-is-move{
         user-select: none;
@@ -541,7 +535,7 @@ $trick-border: $trick-show-size solid $trick-color;
     &-bc,&-tc{
         align-items: center;
         justify-content: center;
-        cursor: ns-resize;
+        cursor: row-resize;
         left: $trick-corner-width + $trick-split;
         height: $trick-width;
         right: $trick-corner-width + $trick-split;
@@ -570,7 +564,7 @@ $trick-border: $trick-show-size solid $trick-color;
     &-lc,&-rc{
         justify-content: center;
         align-items: center;
-        cursor: ew-resize;
+        cursor: col-resize;
         top: $trick-corner-width + $trick-split;
         bottom: $trick-corner-width + $trick-split;
         width: $trick-width;
