@@ -15,13 +15,13 @@
             class="co-re_page-stand co-re_page-stand-y"
             ref="standY"
         ></div>
-        <object height="100%" width="100%" style="pointer-events: none" type="text/html" ref="objectHtml"></object>
-        <canvas class=""></canvas>
+        <object class="co-re_page-bgc co-re_page-bgc-resize" height="100%" width="100%" type="text/html" ref="objectHtml"></object>
+        <canvas class="co-re_page-bgc co-re_page-bgc-hint" ref="canvas"></canvas>
     </div>
 </template>
 
 <script>
-import {numToFixed} from "../../tools";
+import {getMiDiff, numToFixed} from "../../tools";
 import {throttle, debounce} from "lodash";
 
 export default {
@@ -72,6 +72,20 @@ export default {
     },
     data() {
         return {
+            minY: {
+              hint: '',
+              obj: null,
+              stu: false,
+              val: null,
+              diffV: 0
+            },
+            minX: {
+                hint: '',
+                obj: null,
+                stu: false,
+                val: null,
+                diffV: 0
+            },
             xStand: {
                 top: 0,
                 value: 'no'
@@ -117,6 +131,8 @@ export default {
             setParentSizeToBoxDe: debounce(this.setParentSizeToBox, 500),
             resizeBoxDe: debounce(this.resizeBox, 30),
             boxArrBack: null,
+            ctx: null,
+            alignLine: []
         }
     },
     watch: {
@@ -142,6 +158,8 @@ export default {
     mounted() {
         this.initBoxSize()
         this.bindDocEvent();
+        this.initCtx();
+        this.initCtxStyle();
     },
     beforeDestroy() {
         this.clearDocEvent()
@@ -264,20 +282,43 @@ export default {
             this.$emit('update:oldHeight', this.box.height);
         },
         resizeEvent: throttle(function (resizingData) {
-            this.pagePost(resizingData.rect);
-            this.blockPost(resizingData.rect, resizingData.boxId);
-            if (this.xStand.value !== 'no') {
-                this.$refs.standX.style.transform = `translateY(${this.xStand.top}px)`;
-                this.$refs.standX.style.opacity = '1';
-            } else {
-                this.$refs.standX.style.opacity = '0';
+            // this.pagePost(resizingData.rect);
+            this.alignBox(resizingData.rect);
+            // this.blockPost(resizingData.rect, resizingData.boxId);
+            // if (this.xStand.value !== 'no') {
+            //     this.$refs.standX.style.transform = `translateY(${this.xStand.top}px)`;
+            //     this.$refs.standX.style.opacity = '1';
+            // } else {
+            //     this.$refs.standX.style.opacity = '0';
+            // }
+            // if (this.yStand.value !== 'no') {
+            //     this.$refs.standY.style.transform = `translateX(${this.yStand.left}px)`;
+            //     this.$refs.standY.style.opacity = '1';
+            // } else {
+            //     this.$refs.standY.style.opacity = '0';
+            // }
+            let lineArr = [];
+            console.log('this.minX :>> ', this.minX, this.minY);
+            if(this.minX.diffV < this.alignDis){
+                this.minX.stu = true;
+                if(this.minX.obj){
+                    lineArr.push([[0, this.minX.val], [this.box.width, this.minX.val]])
+                } else {
+                    lineArr.push([[0, this.minX.val], [this.box.width, this.minX.val]])
+                }
             }
-            if (this.yStand.value !== 'no') {
-                this.$refs.standY.style.transform = `translateX(${this.yStand.left}px)`;
-                this.$refs.standY.style.opacity = '1';
-            } else {
-                this.$refs.standY.style.opacity = '0';
+
+            if(this.minY.diffV < this.alignDis){
+                this.minY.stu = false;
+                lineArr.push()
+                if(this.minY.obj){
+                    lineArr.push([[this.minY.val, 0], [this.minY.val, this.box.height]])
+                } else {
+                    lineArr.push([[this.minY.val, 0], [this.minY.val, this.box.height]])
+                }
             }
+            this.draw(lineArr);
+
         }, 50, {
             trailing: false
         }),
@@ -288,6 +329,41 @@ export default {
             this.$refs.standX.style.transform = 'translateX(0px)';
             this.yStand.value = "no";
             this.xStand.value = "no";
+        },
+        alignBox(newRect, moduleId){
+            this.minY = [
+                {val: newRect.l, hint: 'l', diffV: Math.abs(newRect.l - this.box.centerW)},
+                {val: newRect.l + newRect.w / 2, hint: '_lc_', diffV: Math.abs(newRect.l + newRect.w / 2 - this.box.centerW)},
+                {val: newRect.l + newRect.w, hint: 'r', diffV: Math.abs(newRect.l + newRect.w - this.box.centerW)}
+            ].sort((a, b) => a.diffV - b.diffV)[0];
+            this.minY.val = this.box.centerW;
+            this.minY.stu = false;
+            this.minX = [
+                {val: newRect.t, hint: 't', diffV: Math.abs(newRect.t - this.box.centerH)},
+                {val: newRect.t + newRect.h / 2, hint: '_tc_', diffV: Math.abs(newRect.t + newRect.h / 2 - this.box.centerH) },
+                {val: newRect.t + newRect.h, hint: 'b', diffV: Math.abs(newRect.t + newRect.h - this.box.centerH)}
+            ].sort((a, b) => a.diffV - b.diffV)[0];
+            this.minX.val = this.box.centerH;
+            this.minX.stu = false;
+            this.boxArrBack.forEach(item => {
+                if(item[this.idPropName] === moduleId) return
+                let yData = [item.l, item.l + item.w / 2, item.l + item.w];
+                let xData = [item.t, item.t + item.h / 2, item.t + item.h];
+                let minYTarget = [
+                    getMiDiff(yData, newRect.l, 'l'),
+                    getMiDiff(yData, newRect.l + newRect.w / 2, '_lc_'),
+                    getMiDiff(yData, newRect.l + newRect.w, 'r')].sort((a, b) => a.val - b.val)[0];
+                let minXTarget = [
+                    getMiDiff(xData, newRect.t, 't'),
+                    getMiDiff(xData, newRect.t + newRect.h / 2, '_tc_'),
+                    getMiDiff(xData, newRect.t + newRect.h, 'b')].sort((a, b) => a.val - b.val)[0];
+                if (this.minX.val < minXTarget.val){
+                    Object.assign(this.minX, minXTarget, {obj: item})
+                }
+                if (this.minY.val < minYTarget.val){
+                    Object.assign(this.minY, minYTarget, {obj: item})
+                }
+            });
         },
         pagePost(newRect) {
             let disW = newRect.w / 2 + newRect.l;
@@ -536,6 +612,10 @@ export default {
                             return tar[v.rectPropRewrite.width || 'w']
                         case 'h':
                             return tar[v.rectPropRewrite.height || 'h']
+                        case '_lc_':
+                            return tar[v.rectPropRewrite.left || 'l'] + tar[v.rectPropRewrite.width || 'w'] / 2
+                        case '_tc_':
+                            return tar[v.rectPropRewrite.top || 't'] + tar[v.rectPropRewrite.height || 'h'] / 2
                         default:
                             return tar[p]
                     }
@@ -610,6 +690,29 @@ export default {
             this.oldBox.width = this.box.width;
             this.oldBox.height = this.box.height;
         },
+        initCtx(){
+            this.$refs.canvas.width = this.box.width;
+            this.$refs.canvas.height = this.box.height;
+        },
+        initCtxStyle(){
+            this.ctx = this.$refs.canvas.getContext('2d');
+            const scale = window.devicePixelRatio;
+            this.ctx.scale(scale, scale);
+            this.ctx.strokeStyle = '#000000';
+            this.ctx.fillStyle = '#007fd4';
+            this.ctx.font = '16px Microsoft YaHei';
+            this.ctx.lineWidth = 0.5;
+        },
+        draw(lineArr){
+            this.ctx.clearRect(0,0,this.box.width, this.box.height);
+            this.ctx.beginPath()
+            // this.ctx.setLineDash([4, 4]);
+            lineArr.forEach(([start, end]) => {
+                this.ctx.moveTo.apply(this.ctx, start);
+                this.ctx.lineTo.apply(this.ctx, end);
+            })
+            this.ctx.stroke();
+        }
     },
 }
 </script>
@@ -659,6 +762,22 @@ $name: 're_page';
         position: absolute;
         height: 100%;
         width: 100%;
+        z-index: 2;
+    }
+
+    &-bgc{
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        &-resize{
+            z-index: -1;
+        }
+        &-hint{
+            z-index: 3;
+            pointer-events: none;
+        }
     }
 }
 </style>
