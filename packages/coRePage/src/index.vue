@@ -298,24 +298,25 @@ export default {
             //     this.$refs.standY.style.opacity = '0';
             // }
             let lineArr = [];
-            console.log('this.minX :>> ', this.minX, this.minY);
             if(this.minX.diffV < this.alignDis){
                 this.minX.stu = true;
-                if(this.minX.obj){
-                    lineArr.push([[0, this.minX.val], [this.box.width, this.minX.val]])
-                } else {
-                    lineArr.push([[0, this.minX.val], [this.box.width, this.minX.val]])
-                }
+                // if(this.minX.obj){
+                let pointY = Math.floor(this.minX.val) + .5;
+                    lineArr.push([[0, pointY], [this.box.width , pointY]])
+                // } else {
+                //     lineArr.push([[0.5, this.minX.val], [this.box.width + .5, this.minX.val]])
+                // }
             }
 
             if(this.minY.diffV < this.alignDis){
                 this.minY.stu = false;
                 lineArr.push()
-                if(this.minY.obj){
-                    lineArr.push([[this.minY.val, 0], [this.minY.val, this.box.height]])
-                } else {
-                    lineArr.push([[this.minY.val, 0], [this.minY.val, this.box.height]])
-                }
+                // if(this.minY.obj){
+                let pointX = Math.floor(this.minY.val) + .5;
+                    lineArr.push([[pointX, 0], [pointX, this.box.height]])
+                // } else {
+                //     lineArr.push([[this.minY.val, 0], [this.minY.val, this.box.height]])
+                // }
             }
             this.draw(lineArr);
 
@@ -698,7 +699,7 @@ export default {
             this.ctx = this.$refs.canvas.getContext('2d');
             const scale = window.devicePixelRatio;
             this.ctx.scale(scale, scale);
-            this.ctx.strokeStyle = '#000000';
+            this.ctx.strokeStyle = '#007fd4';
             this.ctx.fillStyle = '#007fd4';
             this.ctx.font = '16px Microsoft YaHei';
             this.ctx.lineWidth = 0.5;
@@ -706,12 +707,17 @@ export default {
         draw(lineArr){
             this.ctx.clearRect(0,0,this.box.width, this.box.height);
             this.ctx.beginPath()
-            // this.ctx.setLineDash([4, 4]);
+            this.ctx.setLineDash([8, 2, 4, 2]);
             lineArr.forEach(([start, end]) => {
                 this.ctx.moveTo.apply(this.ctx, start);
                 this.ctx.lineTo.apply(this.ctx, end);
             })
             this.ctx.stroke();
+        },
+        drawLineNum(lineArr){
+            lineArr.forEach(item => {
+
+            })
         }
     },
 }
