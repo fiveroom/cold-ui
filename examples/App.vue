@@ -92,7 +92,7 @@ export default {
     },
     created() {
         setTimeout(() => {
-            this.boxArr = Array.from({length: 1}).map((i, ind) => ({
+            this.boxArr = Array.from({length: 16}).map((i, ind) => ({
                 width: 100,
                 height: 100,
                 left: Math.random() * 700 ,
@@ -114,7 +114,7 @@ export default {
 
 <style lang="scss">
 #app {
-    height: 60vh;
+    height: 600px;
     width: 90%;
     border: 1px solid red;
     position: relative;

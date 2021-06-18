@@ -15,6 +15,6 @@ export function s4() {
 }
 
 export function getMiDiff(arrData, tar, hint){
-    let arr = arrData.sort((a, b) => Math.abs(tar - a) - Math.abs(tar - b))[0];
+    let arr = arrData.sort((a, b) => Math.abs(tar - a) - Math.abs(tar - b));
     return {val: arr[0], hint, diffV: Math.abs(tar - arr[0])}
 }
