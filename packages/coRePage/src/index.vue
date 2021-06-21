@@ -395,6 +395,61 @@ export default {
                 this.ctx.clearRect(0,0,this.box.width, this.box.height);
             // }, 500)
         },
+        alignBoxTwo(newRect, moduleId){
+            const {l, h, w, t} = newRect;
+            const aX = l + w / 2;
+            const aY = t + h / 2;
+            const r = l + w;
+            const b = t + h;
+            let diffLVArr = [];
+            let diffTVArr = [];
+            this.boxArrBack.forEach((item) => {
+                if(item.id === moduleId) return
+                const {h: iH, w: iW, t: iT, l: iL} = item;
+                const bX = iL + iW / 2;
+                const bY = iT + iH / 2;
+                let xMetaData = [{bProp: 'l', val: iL}, {bProp: 'xc', val: iL + iW / 2}, {bProp: 'r', val: iL + iW}];
+                let yMetaData = [{bProp: 't', val: iT}, {bProp: 'yc', val: iT + iH / 2}, {bProp: 'b', val: iT + iH}];
+
+                let lDiffV = xMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - l), aProp: 'l'}))
+                    .sort((a, b) => a - b)[0];
+                let lcDiffV = xMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - aX), aProp: 'lc'}))
+                    .sort((a, b) => a - b)[0];
+                let rDiffV = xMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - r), aProp: 'r'}))
+                    .sort((a, b) => a - b)[0];
+                let tDiffV = yMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - t), aProp: 't'}))
+                    .sort((a, b) => a - b)[0];
+                let tcDiffV = yMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - aY), aProp: 'tc'}))
+                    .sort((a, b) => a - b)[0];
+                let bDiffV = yMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - b), aProp: 'b'}))
+                    .sort((a, b) => a - b)[0];
+
+                let alignL = [];
+                lDiffV.diffV < this.alignDis && alignL.push(lDiffV);
+                rDiffV.diffV < this.alignDis && alignL.push(rDiffV);
+                if(lcDiffV.diffV < this.alignDis && !alignL.length){
+                      alignL.push(lcDiffV)
+                }
+
+                let alignT = [];
+                tDiffV.diffV < this.alignDis && alignT.push(tDiffV);
+                bDiffV.diffV < this.alignDis && alignT.push(bDiffV);
+                if(tcDiffV.diffV < this.alignDis && !alignT.length){
+                    alignT.push(tcDiffV)
+                }
+                if(alignL.length){
+                    diffLVArr.push({dis: aY - bY - h/2 - iH/2, alignL, obj: item})
+                }
+                if(alignT.length){
+                    diffTVArr.push({dis: aX - bX - w/2 - iW/2, alignT, obj: item})
+                }
+            })
+
+            diffTVArr.sort((a, b) => a.dis - b.dis);
+            return {
+                diffLVArr: diffLVArr.sort((a, b) => a.dis - b.dis)[0]
+            }
+        },
         alignBox(newRect, moduleId){
             /**
              *  TODO 1、最近盒子计算失败。2、object元素在火狐浏览器不兼容，无法正确渲染窗口。3、基准线不够准确。4、判断优化
@@ -685,6 +740,8 @@ export default {
                             return tar[v.rectPropRewrite.width || 'w']
                         case 'h':
                             return tar[v.rectPropRewrite.height || 'h']
+                        case 'id':
+                            return tar[v.idPropName || 'id']
                         case '_lc_':
                             return tar[v.rectPropRewrite.left || 'l'] + tar[v.rectPropRewrite.width || 'w'] / 2
                         case '_tc_':
