@@ -376,18 +376,26 @@ export default {
                 //     lineArr.push([[this.minY.val, 0], [this.minY.val, this.box.height]])
                 // }
             // }
-            // this.drawAlign(alignArr)
-            // this.ctx.clearRect(0,0,this.box.width, this.box.height);
-            // alignArr.forEach(item => this.drawLine(item, 'align'));
-            // numberArr.forEach(item => this.drawLine(item, 'val'));
+
             let diffData = this.alignBoxTwo(rect, boxId);
-            let xAlignPoint = [];
+            let alignArr = [];
             if(diffData.diffLVArr){
                 diffData.diffLVArr.alignL.forEach(item => {
-
+                    let xPoint = Math.floor(item.val)
+                    alignArr.push([[xPoint, 0], [xPoint, this.box.height]])
                 })
             }
 
+            if(diffData.diffTVArr){
+                diffData.diffTVArr.alignT.forEach(item => {
+                    let yPoint = Math.floor(item.val)
+                    alignArr.push([[0, yPoint], [this.box.width, yPoint]])
+                })
+            }
+            this.drawAlign(alignArr)
+            this.ctx.clearRect(0,0,this.box.width, this.box.height);
+            alignArr.forEach(item => this.drawLine(item, 'align'));
+            // numberArr.forEach(item => this.drawLine(item, 'val'));
         }, 50, {
             trailing: false
         }),
@@ -445,10 +453,10 @@ export default {
                     alignT.push(tcDiffV)
                 }
                 if(alignL.length){
-                    diffLVArr.push({dis: aX - bX - w/2 - iW/2, alignL, obj: item})
+                    diffLVArr.push({dis: Math.abs(aX - bX )- w/2 - iW/2, alignL, obj: item})
                 }
                 if(alignT.length){
-                    diffTVArr.push({dis: aY - bY - h/2 - iH/2, alignT, obj: item})
+                    diffTVArr.push({dis: Math.abs(aY - bY) - h/2 - iH/2, alignT, obj: item})
                 }
             })
             return {
