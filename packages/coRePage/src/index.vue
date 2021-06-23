@@ -286,7 +286,6 @@ export default {
         resizeEvent: throttle(function ({rect, boxId}) {
             // this.pagePost(resizingData.rect);
             // this.alignBox(rect, boxId);
-            console.log('this.alignBoxTwo :>> ', this.alignBoxTwo(rect, boxId));
             // this.blockPost(resizingData.rect, resizingData.boxId);
             // if (this.xStand.value !== 'no') {
             //     this.$refs.standX.style.transform = `translateY(${this.xStand.top}px)`;
@@ -300,87 +299,95 @@ export default {
             // } else {
             //     this.$refs.standY.style.opacity = '0';
             // }
-            let alignArr = [];
-            let numberArr = [];
-            if(this.minX.diffV < this.alignDis){
-                this.minX.stu = true;
-
-                let pointY = Math.floor(this.minX.val);
-                alignArr.push([[0, pointY], [this.box.width , pointY]]);
-                if(this.minX.obj){
-                    let obj = this.minX.obj;
-                    let numY;
-                    if(rect.t <= obj.t){
-                        numY = Math.floor((rect.t + rect.h + obj.t) / 2)
-                    } else if(rect.t + rect.h >= obj.t + obj.h){
-                        numY = Math.floor((rect.t + obj.t + obj.h) / 2)
-                    } else {
-                        numY = Math.floor(rect.t + rect.h / 2)
-                    }
-                    if(rect.l > obj.l + obj.w){
-                        numberArr.push([
-                            [Math.floor(obj.l + obj.w), numY],
-                            [Math.floor(rect.l), numY],
-                            Math.floor(Math.abs(rect.l - obj.l - obj.w))]);
-                    } else if (rect.l + rect.w < obj.l) {
-                        numberArr.push([
-                            [Math.floor(rect.l + rect.w), numY],
-                            [Math.floor(obj.l), numY],
-                            Math.floor(Math.abs(obj.l- rect.l - rect.w))]);
-                    } else {
-                        numberArr.push([
-                            [Math.floor(obj.l), numY],
-                            [Math.floor(rect.l), numY],
-                            Math.floor(Math.abs(obj.l- rect.l)),
-                        ]);
-                        numberArr.push([
-                            [Math.floor(rect.l + rect.w), numY],
-                            [Math.floor(obj.l + obj.w), numY],
-                            Math.floor(Math.abs(obj.l + obj.w- rect.l - rect.w)),
-                        ]);
-                    }
-                } else {
-                    let numY = Math.floor(rect.t + rect.h / 2)
-                    let point1 = [[0, numY], [Math.floor(rect.l), numY], Math.floor(rect.l)];
-                    let point2V = Math.abs(Math.floor(this.box.width - rect.l - rect.w));
-                    let point2 = [[Math.floor(rect.l + rect.w), numY],[this.box.width, numY], point2V];
-                    numberArr.push(point1, point2)
-                }
+            // let alignArr = [];
+            // let numberArr = [];
+            // if(this.minX.diffV < this.alignDis){
+            //     this.minX.stu = true;
+            //
+            //     let pointY = Math.floor(this.minX.val);
+            //     alignArr.push([[0, pointY], [this.box.width , pointY]]);
+            //     if(this.minX.obj){
+            //         let obj = this.minX.obj;
+            //         let numY;
+            //         if(rect.t <= obj.t){
+            //             numY = Math.floor((rect.t + rect.h + obj.t) / 2)
+            //         } else if(rect.t + rect.h >= obj.t + obj.h){
+            //             numY = Math.floor((rect.t + obj.t + obj.h) / 2)
+            //         } else {
+            //             numY = Math.floor(rect.t + rect.h / 2)
+            //         }
+            //         if(rect.l > obj.l + obj.w){
+            //             numberArr.push([
+            //                 [Math.floor(obj.l + obj.w), numY],
+            //                 [Math.floor(rect.l), numY],
+            //                 Math.floor(Math.abs(rect.l - obj.l - obj.w))]);
+            //         } else if (rect.l + rect.w < obj.l) {
+            //             numberArr.push([
+            //                 [Math.floor(rect.l + rect.w), numY],
+            //                 [Math.floor(obj.l), numY],
+            //                 Math.floor(Math.abs(obj.l- rect.l - rect.w))]);
+            //         } else {
+            //             numberArr.push([
+            //                 [Math.floor(obj.l), numY],
+            //                 [Math.floor(rect.l), numY],
+            //                 Math.floor(Math.abs(obj.l- rect.l)),
+            //             ]);
+            //             numberArr.push([
+            //                 [Math.floor(rect.l + rect.w), numY],
+            //                 [Math.floor(obj.l + obj.w), numY],
+            //                 Math.floor(Math.abs(obj.l + obj.w- rect.l - rect.w)),
+            //             ]);
+            //         }
+            //     } else {
+            //         let numY = Math.floor(rect.t + rect.h / 2)
+            //         let point1 = [[0, numY], [Math.floor(rect.l), numY], Math.floor(rect.l)];
+            //         let point2V = Math.abs(Math.floor(this.box.width - rect.l - rect.w));
+            //         let point2 = [[Math.floor(rect.l + rect.w), numY],[this.box.width, numY], point2V];
+            //         numberArr.push(point1, point2)
+            //     }
                 // } else {
                 //     lineArr.push([[0.5, this.minX.val], [this.box.width + .5, this.minX.val]])
                 // }
-            }
+            // }
 
-            if(this.minY.diffV < this.alignDis){
-                this.minY.stu = false;
-                alignArr.push()
-                // if(this.minY.obj){
-                let pointX = Math.floor(this.minY.val) ;
-                alignArr.push([[pointX, 0], [pointX, this.box.height]])
-                if(this.minY.obj){
-
-                } else {
-                    let point1V = Math.floor(rect.t);
-                    let numX = Math.floor(rect.l + rect.w / 2);
-
-                    if(point1V > 4){
-                        let point1 = [[numX, 0], [numX, point1V], point1V];
-                        numberArr.push(point1);
-                    }
-                    let point2V = Math.floor(Math.abs(rect.t + rect.h - this.box.height));
-                    if(point2V > 4){
-                        let point2 = [[numX, Math.floor(rect.t + rect.h)], [numX, this.box.height], point2V];
-                        numberArr.push(point2)
-                    }
-                }
+            // if(this.minY.diffV < this.alignDis){
+            //     this.minY.stu = false;
+            //     alignArr.push()
+            //     // if(this.minY.obj){
+            //     let pointX = Math.floor(this.minY.val) ;
+            //     alignArr.push([[pointX, 0], [pointX, this.box.height]])
+            //     if(this.minY.obj){
+            //
+            //     } else {
+            //         let point1V = Math.floor(rect.t);
+            //         let numX = Math.floor(rect.l + rect.w / 2);
+            //
+            //         if(point1V > 4){
+            //             let point1 = [[numX, 0], [numX, point1V], point1V];
+            //             numberArr.push(point1);
+            //         }
+            //         let point2V = Math.floor(Math.abs(rect.t + rect.h - this.box.height));
+            //         if(point2V > 4){
+            //             let point2 = [[numX, Math.floor(rect.t + rect.h)], [numX, this.box.height], point2V];
+            //             numberArr.push(point2)
+            //         }
+            //     }
                 // } else {
                 //     lineArr.push([[this.minY.val, 0], [this.minY.val, this.box.height]])
                 // }
-            }
+            // }
             // this.drawAlign(alignArr)
             // this.ctx.clearRect(0,0,this.box.width, this.box.height);
             // alignArr.forEach(item => this.drawLine(item, 'align'));
             // numberArr.forEach(item => this.drawLine(item, 'val'));
+            let diffData = this.alignBoxTwo(rect, boxId);
+            let xAlignPoint = [];
+            if(diffData.diffLVArr){
+                diffData.diffLVArr.alignL.forEach(item => {
+
+                })
+            }
+
         }, 50, {
             trailing: false
         }),
@@ -425,7 +432,6 @@ export default {
                 let bDiffV = yMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - b), aProp: 'b'}))
                     .sort((a, b) => a.diffV - b.diffV)[0];
                 let alignL = [];
-                console.log('lDiffV :>> ', lDiffV);
                 lDiffV.diffV < this.alignDis && alignL.push(lDiffV);
                 rDiffV.diffV < this.alignDis && alignL.push(rDiffV);
                 if(lcDiffV.diffV < this.alignDis && !alignL.length){
@@ -439,19 +445,18 @@ export default {
                     alignT.push(tcDiffV)
                 }
                 if(alignL.length){
-                    diffLVArr.push({dis: aY - bY - h/2 - iH/2, alignL, obj: item})
+                    diffLVArr.push({dis: aX - bX - w/2 - iW/2, alignL, obj: item})
                 }
                 if(alignT.length){
-                    diffTVArr.push({dis: aX - bX - w/2 - iW/2, alignT, obj: item})
+                    diffTVArr.push({dis: aY - bY - h/2 - iH/2, alignT, obj: item})
                 }
             })
-
-            diffTVArr.sort((a, b) => a.dis - b.dis);
             return {
                 diffLVArr: diffLVArr.sort((a, b) => a.dis - b.dis)[0],
                 diffTVArr: diffTVArr.sort((a, b) => a.dis - b.dis)[0]
             }
         },
+
         alignBox(newRect, moduleId){
             /**
              *  TODO 1、最近盒子计算失败。2、object元素在火狐浏览器不兼容，无法正确渲染窗口。3、基准线不够准确。4、判断优化
