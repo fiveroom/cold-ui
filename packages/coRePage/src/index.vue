@@ -285,7 +285,8 @@ export default {
         },
         resizeEvent: throttle(function ({rect, boxId}) {
             // this.pagePost(resizingData.rect);
-            this.alignBox(rect, boxId);
+            // this.alignBox(rect, boxId);
+            console.log('this.alignBoxTwo :>> ', this.alignBoxTwo(rect, boxId));
             // this.blockPost(resizingData.rect, resizingData.boxId);
             // if (this.xStand.value !== 'no') {
             //     this.$refs.standX.style.transform = `translateY(${this.xStand.top}px)`;
@@ -377,9 +378,9 @@ export default {
                 // }
             }
             // this.drawAlign(alignArr)
-            this.ctx.clearRect(0,0,this.box.width, this.box.height);
-            alignArr.forEach(item => this.drawLine(item, 'align'));
-            numberArr.forEach(item => this.drawLine(item, 'val'));
+            // this.ctx.clearRect(0,0,this.box.width, this.box.height);
+            // alignArr.forEach(item => this.drawLine(item, 'align'));
+            // numberArr.forEach(item => this.drawLine(item, 'val'));
         }, 50, {
             trailing: false
         }),
@@ -408,23 +409,23 @@ export default {
                 const {h: iH, w: iW, t: iT, l: iL} = item;
                 const bX = iL + iW / 2;
                 const bY = iT + iH / 2;
-                let xMetaData = [{bProp: 'l', val: iL}, {bProp: 'xc', val: iL + iW / 2}, {bProp: 'r', val: iL + iW}];
-                let yMetaData = [{bProp: 't', val: iT}, {bProp: 'yc', val: iT + iH / 2}, {bProp: 'b', val: iT + iH}];
+                let xMetaData = [{bProp: 'l', val: iL}, {bProp: 'lc', val: iL + iW / 2}, {bProp: 'r', val: iL + iW}];
+                let yMetaData = [{bProp: 't', val: iT}, {bProp: 'tc', val: iT + iH / 2}, {bProp: 'b', val: iT + iH}];
 
-                let lDiffV = xMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - l), aProp: 'l'}))
-                    .sort((a, b) => a - b)[0];
-                let lcDiffV = xMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - aX), aProp: 'lc'}))
-                    .sort((a, b) => a - b)[0];
-                let rDiffV = xMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - r), aProp: 'r'}))
-                    .sort((a, b) => a - b)[0];
-                let tDiffV = yMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - t), aProp: 't'}))
-                    .sort((a, b) => a - b)[0];
-                let tcDiffV = yMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - aY), aProp: 'tc'}))
-                    .sort((a, b) => a - b)[0];
-                let bDiffV = yMetaData.map(i => Object.assign(i, {diffV: Math.abs(i.val - b), aProp: 'b'}))
-                    .sort((a, b) => a - b)[0];
-
+                let lDiffV = xMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - l), aProp: 'l'}))
+                    .sort((a, b) => a.diffV - b.diffV)[0];
+                let lcDiffV = xMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - aX), aProp: 'lc'}))
+                    .sort((a, b) => a.diffV - b.diffV)[0];
+                let rDiffV = xMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - r), aProp: 'r'}))
+                    .sort((a, b) => a.diffV - b.diffV)[0];
+                let tDiffV = yMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - t), aProp: 't'}))
+                    .sort((a, b) => a.diffV - b.diffV)[0];
+                let tcDiffV = yMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - aY), aProp: 'tc'}))
+                    .sort((a, b) => a.diffV - b.diffV)[0];
+                let bDiffV = yMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - b), aProp: 'b'}))
+                    .sort((a, b) => a.diffV - b.diffV)[0];
                 let alignL = [];
+                console.log('lDiffV :>> ', lDiffV);
                 lDiffV.diffV < this.alignDis && alignL.push(lDiffV);
                 rDiffV.diffV < this.alignDis && alignL.push(rDiffV);
                 if(lcDiffV.diffV < this.alignDis && !alignL.length){
@@ -447,7 +448,8 @@ export default {
 
             diffTVArr.sort((a, b) => a.dis - b.dis);
             return {
-                diffLVArr: diffLVArr.sort((a, b) => a.dis - b.dis)[0]
+                diffLVArr: diffLVArr.sort((a, b) => a.dis - b.dis)[0],
+                diffTVArr: diffTVArr.sort((a, b) => a.dis - b.dis)[0]
             }
         },
         alignBox(newRect, moduleId){
