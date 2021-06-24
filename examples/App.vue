@@ -92,11 +92,11 @@ export default {
     },
     created() {
         setTimeout(() => {
-            this.boxArr = Array.from({length: 4}).map((i, ind) => ({
+            this.boxArr = Array.from({length: 20}).map((i, ind) => ({
                 width: 100,
                 height: 100,
-                left: Math.random() * 700 ,
-                top: Math.random() * 300 ,
+                left: Math.round(Math.random() * 700 ),
+                top: Math.round(Math.random() * 300) ,
                 id: 'box' + ind,
                 lock: false
             }));

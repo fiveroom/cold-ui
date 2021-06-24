@@ -168,7 +168,7 @@ export default {
         },
         setResize(location) {
             if (Reflect.has(location, 'top') || Reflect.has(location, 'left')) {
-                this.setTransfrom()
+                this.setTransform(this.left, this.top)
             }
             if (Reflect.has(location, 'width')) {
                 this.setWidth()
@@ -205,12 +205,13 @@ export default {
                 },
                 boxId: this.boxId,
                 compId: this.compId,
+                type: this.mouseAction
             }
         },
         actionMove(left, top) {
             this.left = this.verifyLeft(left + this.sizeData.oldLeft);
             this.top = this.verifyTop(top + this.sizeData.oldTop);
-            this.setTransfrom();
+            this.setTransform(this.left, this.top);
         },
         actionMoveByStep(step, topStu) {
             if(this.lock) return;
@@ -219,7 +220,7 @@ export default {
             } else {
                 this.left = this.verifyLeft(this.left + step);
             }
-            this.setTransfrom();
+            this.setTransform(this.left, this.top);
             this.$emit('resizing', this.emitResizeData());
             return {
                 boxId: this.boxId,
@@ -342,8 +343,8 @@ export default {
             }
 
         },
-        setTransfrom() {
-            this.$el.style.transform = `translate3d(${this.left}px, ${this.top}px, 0px)`;
+        setTransform(left, top) {
+            this.$el.style.transform = `translate(${left}px, ${top}px)`;
         },
         setHeight() {
             this.$el.style.height = this.height + 'px';
@@ -356,7 +357,7 @@ export default {
         },
         reload(){
             this.setOpacity();
-            this.setTransfrom();
+            this.setTransform(this.left, this.top);
             this.setHeight();
             this.setWidth();
         },

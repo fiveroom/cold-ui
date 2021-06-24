@@ -1,4 +1,4 @@
-export function numToFixed(data, num = 3) {
+export function numToFixed(data, num = 0) {
     let a = Number(data);
     if (Number.isNaN(a)) {
         return 0
