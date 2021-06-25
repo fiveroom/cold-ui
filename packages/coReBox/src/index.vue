@@ -1,8 +1,8 @@
 <template>
     <div
         class="co-re_box-home"
-        :class="{'co-re_box-home-is-move': mouseAction, 'co-re_box-home-check': boxActive}"
-        :style="{ 'z-index': this.zIndex}"
+        :class="{'co-re_box-home-is-move': mouseAction, 'co-re_box-home-check': boxActive, 'co-re_box-home-animal': openAnimal }"
+        :style="{ 'z-index': this.zIndex, 'outline-color': tipsColorIns}"
         @mousedown.stop="mouseDownEvent"
     >
         <div class="co-re_box-body" ref="bodyEL">
@@ -23,15 +23,18 @@
                 v-for="i in trickArr"
                 :key="i"
                 :class="[`co-re_box-trick-${i}`, trickClass(i)]"
+                :style="{ 'border-color': tipsColorIns}"
                 :data-movetype="i"
-            ></i>
+            >
+                <i v-if="i.includes('c')" class="co-re_box-trick--line" :style="{'background-color': tipsColorIns}"></i>
+            </i>
         </template>
     </div>
 </template>
 
 <script>
 // event : resizing dragging resized check-box
-import { uId, numToFixed } from '../../tools';
+import {uId, numToFixed, verifyColor} from '../../tools';
 import { debounce } from "lodash";
 
 export default {
@@ -93,11 +96,15 @@ export default {
                 let arr = ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc", "cm"];
                 return val.every(i => arr.includes(i))
             }
+        },
+        tipsColor: {
+            type: String,
+            default: '#007fd4'
         }
-
     },
     data() {
         return {
+            openAnimal: false,
             trickArr: [],
             location: {
                 translateX: 0,
@@ -127,8 +134,9 @@ export default {
             boxActive: false,
             resizeEndDe: null,
             getParentInfoDe: null,
-            reloadDe: debounce(this.reload, 50),
-            moveHand: true
+            reloadDe: debounce(this.reload, 0),
+            moveHand: true,
+            closeAnimal: debounce(() => this.openAnimal = false, 50)
         }
     },
     methods: {
@@ -163,7 +171,7 @@ export default {
                         Object.assign(location, this.actionR(event.pageX - this.sizeData.lDis))
                     this.setResize(location);
                 }
-                this.$emit('resizing', this.emitResizeData());
+                this.$emit('resizing', this.emitResizeData('mouse'));
             }
         },
         setResize(location) {
@@ -195,7 +203,7 @@ export default {
                 }
             }
         },
-        emitResizeData(){
+        emitResizeData(eventType){
             return {
                 rect: {
                     h: this.height,
@@ -205,7 +213,8 @@ export default {
                 },
                 boxId: this.boxId,
                 compId: this.compId,
-                type: this.mouseAction
+                type: this.mouseAction,
+                eventType
             }
         },
         actionMove(left, top) {
@@ -221,7 +230,7 @@ export default {
                 this.left = this.verifyLeft(this.left + step);
             }
             this.setTransform(this.left, this.top);
-            this.$emit('resizing', this.emitResizeData());
+            this.$emit('resizing', this.emitResizeData('keyboard'));
             return {
                 boxId: this.boxId,
                 left: this.left,
@@ -316,7 +325,7 @@ export default {
                 this.$emit('update:h', this.height);
                 this.$emit('update:l', this.left);
                 this.$emit('update:t', this.top);
-                this.$emit('resized', this.emitResizeData());
+                this.$emit('resized', this.emitResizeData('mouse'));
                 this.mouseAction = '';
             }
 
@@ -356,10 +365,12 @@ export default {
             this.$el.style.opacity = '1';
         },
         reload(){
+            this.openAnimal = true;
             this.setOpacity();
             this.setTransform(this.left, this.top);
             this.setHeight();
             this.setWidth();
+            this.closeAnimal();
         },
         setParentSize(size){
             this.parentDis = {
@@ -371,7 +382,7 @@ export default {
         }
     },
     created() {
-        this.resizeEndDe = debounce(()=>this.$emit('resized', this.emitResizeData()), 500);
+        this.resizeEndDe = debounce(()=>this.$emit('resized', this.emitResizeData('init')), 500);
         if(this.auToParentSize){
             this.getParentInfoDe = debounce(this.getParentInfo, 500);
         }
@@ -398,6 +409,9 @@ export default {
                 boxId: this.boxId,
                 compId: this.compId,
             }
+        },
+        tipsColorIns(){
+            return verifyColor(this.tipsColor.toString(), '#007fd4')
         }
     },
     watch: {
@@ -489,8 +503,9 @@ $trick-border: $trick-show-size solid $trick-color;
         box-shadow: 0 5px 5px -3px rgba(0,0,0,.2), 0 8px 10px 1px rgba(0,0,0,.1), 0 3px 14px 2px rgba(0,0,0,.12);
     }
     &-animal{
-        transition-property: all;
-        transition-duration: .2s;
+        transition-property: transform, width, height, opacity;
+        transition-duration: .25s;
+        transition-timing-function: ease-out;
     }
     &-check{
         outline: 1px dashed $trick-color;
@@ -506,19 +521,19 @@ $trick-border: $trick-show-size solid $trick-color;
     display: block;
     font-size: 1px;
     z-index: 2;
+    &--line{
+        content: "";
+        display: block;
+        background-color: $trick-color;
+        border-radius: 2px;
+        transition-property: opacity;
+        transition-timing-function: ease-in;
+        transition-duration: .15s;
+        opacity: 0;
+    }
     &-tc,&-bc,&-lc,&-rc{
         display: flex;
-        &::after{
-            content: "";
-            display: block;
-            background-color: $trick-color;
-            border-radius: 2px;
-            transition-property: opacity;
-            transition-timing-function: ease-in;
-            transition-duration: .15s;
-            opacity: 0;
-        }
-        &:hover::after{
+        &:hover>.#{$prefix}-#{$name}-trick--line{
             opacity: 1;
             //transition-property: opacity;
             transition-duration: .25s;
@@ -540,17 +555,13 @@ $trick-border: $trick-show-size solid $trick-color;
         left: $trick-corner-width + $trick-split;
         height: $trick-width;
         right: $trick-corner-width + $trick-split;
-        &::after{
+        &>.#{$prefix}-#{$name}-trick--line{
             transform-origin: bottom;
-            //transform: scaleX(0.4);
             width: 100%;
             height: $trick-show-size;
         }
-        &:hover::after{
-            //transform: scaleX(1);
-        }
-        &.co-re_box-trick--active::after{
-            //transform: scaleX(1);
+
+        &.co-re_box-trick--active>.#{$prefix}-#{$name}-trick--line{
             opacity: 1;
         }
     }
@@ -569,17 +580,13 @@ $trick-border: $trick-show-size solid $trick-color;
         top: $trick-corner-width + $trick-split;
         bottom: $trick-corner-width + $trick-split;
         width: $trick-width;
-        &::after{
+        &>.#{$prefix}-#{$name}-trick--line{
             transform-origin: left;
-            //transform: scaleY(0.4);
             height: 100%;
             width: $trick-show-size;
         }
-        &:hover::after{
-            //transform: scaleY(1);
-        }
-        &.co-re_box-trick--active::after{
-            //transform: scaleY(1);
+
+        &.co-re_box-trick--active>.#{$prefix}-#{$name}-trick--line{
             opacity: 1;
         }
     }

@@ -2,7 +2,7 @@ import Vue from 'vue'
 import App from './App.vue'
 
 // import coldUi from 'cold-ui-vue';
-import 'cold-ui-vue/lib/cold-ui.css';
+
 
 import './assets/global.scss'
 

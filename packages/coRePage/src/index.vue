@@ -16,14 +16,16 @@
             ref="standY"
         ></div>
         <object class="co-re_page-bgc co-re_page-bgc-resize"
-                height="100%" width="100%" type="text/html" ref="objectHtml"></object>
+                ref="objectHtml"
+                height="100%" width="100%" type="text/html" data="about:blank">
+        </object>
         <canvas class="co-re_page-bgc co-re_page-bgc-hint" ref="canvas"></canvas>
     </div>
 </template>
 
 <script>
 
-import {getMiDiff, numToFixed} from "../../tools";
+import { verifyColor} from "../../tools";
 import {throttle, debounce} from "lodash";
 
 export default {
@@ -33,15 +35,18 @@ export default {
             type: Array,
             default: () => ([])
         },
-        useStand: {
-            type: Boolean,
-            default: false
-        },
-        useBlockStand: {
-            type: Boolean,
-            default: false
-        },
         idPropName: String,
+        toolConfig: {
+            type: Object,
+            default: () => ({
+                useKeyControl: true,
+                useStand: true
+            })
+        },
+        tipsColor: {
+            type: String,
+            default: '#007fd4'
+        },
         showDis: {
           type: Boolean,
           default: true
@@ -54,10 +59,6 @@ export default {
                 top: 't',
                 left: 'l'
             })
-        },
-        useKeyControl: {
-            type: Boolean,
-            default: true
         },
         keyStep: {
             type: Number,
@@ -74,20 +75,20 @@ export default {
         autoFirstResize: {
             default: true,
             type: Boolean
+        },
+        mouseVerifyDis: {
+            type: Number,
+            default: 3
         }
     },
     data() {
+        let alignDis = new Proxy({'mouse': this.mouseVerifyDis,'keyboard': 1}, {
+            get(target, p) {
+                return target[p] ?? 0
+            }
+        })
         return {
-
-            xStand: {
-                top: 0,
-                value: 'no'
-            },
-            yStand: {
-                left: 0,
-                value: 'no'
-            },
-            alignDis: 4,
+            alignDis: alignDis,
             alignTipsWidth: 50,
             box: {
                 width: 0,
@@ -120,13 +121,15 @@ export default {
                 38: [false, true]
             },
             checkBoxes: new Set(),
-            keyDownData: null,
+            keyDownData: {},
             controlStu: false,
             setParentSizeToBoxDe: debounce(this.setParentSizeToBox, 500),
             resizeBoxDe: debounce(this.resizeBox, 30),
             boxArrBack: null,
+            clearStandDe: debounce(this.clearStand, 1000),
             ctx: null,
-            alignLine: []
+            alignLine: [],
+            toolConfigIns: {}
         }
     },
     watch: {
@@ -152,16 +155,36 @@ export default {
     mounted() {
         this.initBoxSize()
         this.bindDocEvent();
+        this.ctx = this.$refs.canvas.getContext('2d');
         this.initCtx();
-        this.initCtxStyle();
     },
     beforeDestroy() {
         this.clearDocEvent()
     },
     created() {
         Object.assign(this.rectProp, this.rectPropRewrite);
+        if(Object.prototype.toString.call(this.toolConfig) === "[object Object]"){
+            Object.assign(this.toolConfigIns, {
+                useKeyControl: true,
+                useStand: true
+            }, this.toolConfig)
+        }
     },
 
+    computed: {
+      canvasBox(){
+          return {
+              l: 0,
+              t: 0,
+              w: this.box.width,
+              h: this.box.height,
+              id: '_canvas_box_'
+          }
+      },
+      tipsColorIns(){
+          return verifyColor(this.tipsColor.toString(), '#007fd4')
+      }
+    },
     methods: {
         initBoxSize() {
             let rect = this.$el.getBoundingClientRect();
@@ -171,6 +194,7 @@ export default {
             this.box.centerH = this.box.height / 2;
             this.box.xV = rect.left + window.scrollX + this.$el.clientLeft;
             this.box.yV = rect.top + window.scrollY + this.$el.clientTop;
+            this.emitOldSize()
         },
         initResizeBox() {
             this.boxArrObj = {};
@@ -188,11 +212,11 @@ export default {
                     if (comp && comp.$options.name === 'coReBox') {
                         if (this.compIds[comp.compId]) return;
                         this.compIds[comp.compId] = comp;
-                        if (this.useStand) {
+                        if (this.toolConfigIns.useStand) {
                             comp.$on('resizing', this.resizeEvent.bind(this));
                             comp.$on('resized', this.resizeStop.bind(this));
                         }
-                        if (this.useKeyControl) {
+                        if (this.toolConfigIns.useKeyControl) {
                             comp.$on('check-box', this.getActiveBox.bind(this));
                             comp.$on('uncheck-box', this.getUnActiveBox.bind(this));
                         }
@@ -215,6 +239,7 @@ export default {
                 this.checkBoxes.forEach(i => {
                     this.compIds[i].setActive(false)
                 })
+                this.checkBoxes.clear()
                 this.checkBoxes.add(compId);
                 this.compIds[compId].setActive(true)
             }
@@ -224,11 +249,9 @@ export default {
             this.checkBoxes.delete(compId);
         },
         boxKeyDown(event) {
+            if(!this.toolConfigIns.useKeyControl) return;
             this.controlStu = event.ctrlKey;
             if (!this.checkBoxes.size) return;
-            if (!this.keyDownData) {
-                this.keyDownData = {}
-            }
             const done = this.keyDownEvent[event.code || event.keyCode];
             if (done) {
                 event.stopPropagation();
@@ -237,8 +260,8 @@ export default {
                     this.keyDownData[val] = this.compIds[val].actionMoveByStep.apply(null, this.setStepVal(done))
                 });
                 this.boxKeyDownEnd();
+                this.clearStandDe()
             }
-
         },
         boxKeyDownEnd: debounce(function () {
             Object.keys(this.keyDownData).forEach(val => {
@@ -249,30 +272,28 @@ export default {
                     obj.l = source.left;
                 }
             })
-            this.keyDownData = null;
+            this.keyDownData = {};
         }, 500),
         boxKeyUp(event) {
+            if(!this.toolConfigIns.useKeyControl) return;
             this.controlStu = event.ctrlKey;
-            this.clearStand();
+            // this.clearStandDe();
         },
         setStepVal([add, top]) {
             return [add ? this.keyStep : -this.keyStep, top]
         },
-        resizeStop({boxId}) {
-            let obj = this.boxArrObj[boxId];
-            this.$nextTick(() => {
-                this.clearStand()
-                this.emitOldSize();
-            })
+        resizeStop() {
+            this.clearStand()
         },
-        emitOldSize() {
+        emitOldSize: debounce(function () {
             this.$emit('update:oldWidth', this.box.width);
             this.$emit('update:oldHeight', this.box.height);
-        },
-        resizeEvent: throttle(function ({rect, boxId, compId, type}) {
-            let diffData = this.alignBoxTwo(rect, boxId);
+        }, 200),
+        resizeEvent: throttle(function ({rect, boxId, compId, type, eventType}) {
+            let diffData = this.alignBoxTwo(rect, boxId, eventType);
             let alignArr = this.setAlignBoxTips(diffData, {rect, boxId, compId, type});
             this.ctx.clearRect(0, 0, this.box.width, this.box.height);
+            this.setCtxColor();
             alignArr.forEach(item => this.drawLine(item, 'align'));
             if(this.showDis){
                 let numberArr = this.setAlignNumTips(diffData, rect);
@@ -282,12 +303,10 @@ export default {
             trailing: false
         }),
         clearStand() {
-            this.ctx.clearRect(0, 0, this.box.width, this.box.height);
+            this.ctx?.clearRect(0, 0, this.box.width, this.box.height);
         },
-        alignCanvas(){
 
-        },
-        alignBoxTwo(newRect, moduleId) {
+        alignBoxTwo(newRect, moduleId, type) {
             const {l, h, w, t} = newRect;
             const aX = l + w / 2;
             const aY = t + h / 2;
@@ -295,7 +314,8 @@ export default {
             const b = t + h;
             let diffLArr = [];
             let diffTArr = [];
-            this.boxArrBack.forEach((item) => {
+
+            [...this.boxArrBack, this.canvasBox].forEach((item) => {
                 if (item.id === moduleId) return
                 const {h: iH, w: iW, t: iT, l: iL} = item;
                 const bX = iL + iW / 2;
@@ -303,34 +323,34 @@ export default {
                 let xMetaData = [{bProp: 'l', val: iL}, {bProp: 'lc', val: iL + iW / 2}, {bProp: 'r', val: iL + iW}];
                 let yMetaData = [{bProp: 't', val: iT}, {bProp: 'tc', val: iT + iH / 2}, {bProp: 'b', val: iT + iH}];
 
-                let lDiffV = xMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - l), aProp: 'l'}))
+                let lDiffV = xMetaData.map(i => Object.assign({}, i, {diffV: Math.abs(i.val - l), aProp: 'l'}))
                     .sort((a, b) => a.diffV - b.diffV)[0];
-                let lcDiffV = xMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - aX), aProp: 'lc'}))
+                let lcDiffV = xMetaData.map(i => Object.assign({}, i, {diffV: Math.abs(i.val - aX), aProp: 'lc'}))
                     .sort((a, b) => a.diffV - b.diffV)[0];
-                let rDiffV = xMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - r), aProp: 'r'}))
+                let rDiffV = xMetaData.map(i => Object.assign({}, i, {diffV: Math.abs(i.val - r), aProp: 'r'}))
                     .sort((a, b) => a.diffV - b.diffV)[0];
-                let tDiffV = yMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - t), aProp: 't'}))
+                let tDiffV = yMetaData.map(i => Object.assign({}, i, {diffV: Math.abs(i.val - t), aProp: 't'}))
                     .sort((a, b) => a.diffV - b.diffV)[0];
-                let tcDiffV = yMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - aY), aProp: 'tc'}))
+                let tcDiffV = yMetaData.map(i => Object.assign({}, i, {diffV: Math.abs(i.val - aY), aProp: 'tc'}))
                     .sort((a, b) => a.diffV - b.diffV)[0];
-                let bDiffV = yMetaData.map(i => Object.assign({...i}, {diffV: Math.abs(i.val - b), aProp: 'b'}))
+                let bDiffV = yMetaData.map(i => Object.assign({}, i, {diffV: Math.abs(i.val - b), aProp: 'b'}))
                     .sort((a, b) => a.diffV - b.diffV)[0];
                 let alignL = [];
-                lDiffV.diffV < this.alignDis && alignL.push(lDiffV);
-                rDiffV.diffV < this.alignDis && alignL.push(rDiffV);
-                if (lcDiffV.diffV < this.alignDis && !alignL.length) {
+                lDiffV.diffV < this.alignDis[type] && alignL.push(lDiffV);
+                rDiffV.diffV < this.alignDis[type] && alignL.push(rDiffV);
+                if (lcDiffV.diffV < this.alignDis[type] && !alignL.length) {
                     alignL.push(lcDiffV)
                 }
 
                 let alignT = [];
-                tDiffV.diffV < this.alignDis && alignT.push(tDiffV);
-                bDiffV.diffV < this.alignDis && alignT.push(bDiffV);
-                if (tcDiffV.diffV < this.alignDis && !alignT.length) {
+                tDiffV.diffV < this.alignDis[type] && alignT.push(tDiffV);
+                bDiffV.diffV < this.alignDis[type] && alignT.push(bDiffV);
+                if (tcDiffV.diffV < this.alignDis[type] && !alignT.length) {
                     alignT.push(tcDiffV)
                 }
                 let disBox = {
-                    disX: Math.abs(aX - bX) - w / 2 - iW / 2,
-                    disY: Math.abs(aY - bY) - h / 2 - iH / 2,
+                    disX: Math.abs(Math.abs(aX - bX) - w / 2 - iW / 2),
+                    disY: Math.abs(Math.abs(aY - bY) - h / 2 - iH / 2),
                     obj: item
                 }
                 if(alignL.length){
@@ -527,9 +547,10 @@ export default {
             })
         },
         bindDocEvent() {
-            document.addEventListener('mousedown', this.clearCheck);
-            this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.resizeBoxDe);
-            this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.setParentSizeToBoxDe);
+            setTimeout(() => {
+                this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.resizeBoxDe);
+                this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.setParentSizeToBoxDe);
+            }, 500)
         },
         clearDocEvent() {
             document.removeEventListener('mousedown', this.clearCheck);
@@ -546,16 +567,17 @@ export default {
                 this.oldBox.height = this.oldHeight || this.box.height;
             }
             this.initBoxSize()
+            this.initCtx();
             let ratioW = this.oldBox.width / this.box.width;
             let ratioH = this.oldBox.height / this.box.height;
             this.boxArrBack.forEach(item => {
                 if (ratioH !== 1) {
-                    item[this.rectPropRewrite.height || 'h'] = numToFixed(item[this.rectPropRewrite.height || 'h'] / ratioH);
-                    item[this.rectPropRewrite.top || 't'] = numToFixed(item[this.rectPropRewrite.top || 't'] / ratioH);
+                    item[this.rectPropRewrite.height || 'h'] = Math.round(item[this.rectPropRewrite.height || 'h'] / ratioH);
+                    item[this.rectPropRewrite.top || 't'] = Math.round(item[this.rectPropRewrite.top || 't'] / ratioH);
                 }
                 if (ratioW !== 1) {
-                    item[this.rectPropRewrite.width || 'w'] = numToFixed(item[this.rectPropRewrite.width || 'w'] / ratioW);
-                    item[this.rectPropRewrite.left || 'l'] = numToFixed(item[this.rectPropRewrite.left || 'l'] / ratioW);
+                    item[this.rectPropRewrite.width || 'w'] = Math.round(item[this.rectPropRewrite.width || 'w'] / ratioW);
+                    item[this.rectPropRewrite.left || 'l'] = Math.round(item[this.rectPropRewrite.left || 'l'] / ratioW);
                 }
             })
             this.oldBox.width = this.box.width;
@@ -564,15 +586,14 @@ export default {
         initCtx() {
             this.$refs.canvas.width = this.box.width;
             this.$refs.canvas.height = this.box.height;
-        },
-        initCtxStyle() {
-            this.ctx = this.$refs.canvas.getContext('2d');
             const scale = window.devicePixelRatio;
             this.ctx.scale(scale, scale);
-            this.ctx.strokeStyle = '#007fd4';
-            this.ctx.fillStyle = '#007fd4';
+
             this.ctx.font = '16px Microsoft YaHei';
-            this.ctx.lineWidth = 1;
+        },
+        setCtxColor(){
+            this.ctx.strokeStyle = this.tipsColorIns;
+            this.ctx.fillStyle = this.tipsColorIns;
         },
         drawLine([start, end, val], linType = '') {
             this.ctx.beginPath()
@@ -583,13 +604,16 @@ export default {
                 this.ctx.setLineDash([]);
             }
             if (start[0] === end[0]) {
-                this.ctx.moveTo(start[0] + .5, start[1]);
-                this.ctx.lineTo(end[0] + .5, end[1]);
+                let xV = this.isMaxSize(start[0], this.box.width);
+                this.ctx.moveTo(xV, start[1]);
+                this.ctx.lineTo(xV, end[1]);
             } else {
-                this.ctx.moveTo(start[0], start[1] + .5);
-                this.ctx.lineTo(end[0], end[1] + .5);
+                let yV = this.isMaxSize(start[1], this.box.height);
+                this.ctx.moveTo(start[0], yV);
+                this.ctx.lineTo(end[0], yV);
             }
             this.ctx.stroke()
+
             if (linType === 'val' && val > 10) {
                 this.ctx.beginPath()
                 let vPara = [val];

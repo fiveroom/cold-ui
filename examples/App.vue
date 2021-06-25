@@ -27,7 +27,8 @@
                     :l.sync="i.left"
                     :t.sync="i.top"
                     :lock="i.lock"
-                ></CoReBox>
+                >
+                </CoReBox>
             </co-re-page>
         </div>
     </div>
@@ -66,6 +67,17 @@ export default {
                 top: Math.random() * 300 ,
                 id: 'box',
                 lock: false
+            },
+            chartData: {
+                columns: ["日期", "访问用户", "下单用户", "下单率"],
+                rows: [
+                    { 日期: "1/1", 访问用户: 1393, 下单用户: 1093, 下单率: 0.32 },
+                    { 日期: "1/2", 访问用户: 3530, 下单用户: 3230, 下单率: 0.26 },
+                    { 日期: "1/3", 访问用户: 2923, 下单用户: 2623, 下单率: 0.76 },
+                    { 日期: "1/4", 访问用户: 1723, 下单用户: 1423, 下单率: 0.49 },
+                    { 日期: "1/5", 访问用户: 3792, 下单用户: 3492, 下单率: 0.323 },
+                    { 日期: "1/6", 访问用户: 4593, 下单用户: 4293, 下单率: 0.78 }
+                ]
             }
         }
     },
@@ -87,12 +99,11 @@ export default {
             Object.entries(newV).forEach((i, j) => {
                 item[i] = j;
             })
-            console.log('object :>> ', newV);
         }
     },
     created() {
         setTimeout(() => {
-            this.boxArr = Array.from({length: 20}).map((i, ind) => ({
+            this.boxArr = Array.from({length: 1}).map((i, ind) => ({
                 width: 100,
                 height: 100,
                 left: Math.round(Math.random() * 700 ),
@@ -102,7 +113,7 @@ export default {
             }));
             this.oldWidth = 1400;
             this.oldHeight =  600;
-        }, 2000)
+        }, 1000)
     },
     mounted(){
 
@@ -114,7 +125,7 @@ export default {
 
 <style lang="scss">
 #app {
-    height: 600px;
+    height: 70vh;
     width: 90%;
     border: 1px solid red;
     position: relative;
