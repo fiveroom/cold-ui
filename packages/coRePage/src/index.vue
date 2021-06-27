@@ -31,6 +31,10 @@ import {throttle, debounce} from "lodash";
 export default {
     name: "coRePage",
     props: {
+        minShowDis: {
+            type: Number,
+            default: 6
+        },
         boxArr: {
             type: Array,
             default: () => ([])
@@ -614,7 +618,7 @@ export default {
             }
             this.ctx.stroke()
 
-            if (linType === 'val' && val > 10) {
+            if (linType === 'val' && val >= this.minShowDis) {
                 this.ctx.beginPath()
                 let vPara = [val];
                 this.ctx.lineWidth = 2;

@@ -134,7 +134,7 @@ export default {
             boxActive: false,
             resizeEndDe: null,
             getParentInfoDe: null,
-            reloadDe: debounce(this.reload, 0),
+            reloadDe: debounce(this.reload, 100),
             moveHand: true,
             closeAnimal: debounce(() => this.openAnimal = false, 50)
         }
@@ -504,7 +504,7 @@ $trick-border: $trick-show-size solid $trick-color;
     }
     &-animal{
         transition-property: transform, width, height, opacity;
-        transition-duration: .25s;
+        transition-duration: .45s;
         transition-timing-function: ease-out;
     }
     &-check{

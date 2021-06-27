@@ -7,6 +7,7 @@
             <co-re-page
                 :boxArr="boxArr"
                 id-prop-name="id"
+                :tips-color="tipsColor"
                 :use-stand="true"
                 :rect-prop-rewrite="{
                     width: 'width',
@@ -16,11 +17,14 @@
                 }"
                 :old-height="oldHeight"
                 :old-width="oldWidth"
+                :show-dis="openDisStu"
+                :min-show-dis="minShowDis"
             >
                 <CoReBox
                     :ref="`CoReBox${ind}`"
                     v-for="(i, ind) in boxArr"
                     :key="ind"
+                    :tips-color="tipsColor"
                     :boxId="i.id"
                     :w.sync="i.width"
                     :h.sync="i.height"
@@ -30,6 +34,16 @@
                 >
                 </CoReBox>
             </co-re-page>
+        </div>
+        <div>
+            工具框
+
+            提示颜色 <input @change="changeColor" v-model="tipsColor" type="color" />
+
+            间距提示 <input type="checkbox" v-model="openDisStu">
+
+            最小间距 <input type="number" v-model="minShowDis">
+
         </div>
     </div>
 </template>
@@ -52,12 +66,15 @@ export default {
     data() {
         return {
             boxArr: [],
+            minShowDis: 10,
+            openDisStu: false,
             dataT: {
                 w: 100,
                 h: 100,
                 l: 0,
                 t: 0,
             },
+            tipsColor: '#000',
             oldHeight: 0,
             oldWidth: 0,
             box: {
@@ -92,6 +109,9 @@ export default {
                 }
             )
         },
+        changeColor(event){
+            console.log('e :>> ', event);
+        },
         setD() {
             this.$refs.CoReBox.setDataM(+new Date())
         },
@@ -103,9 +123,9 @@ export default {
     },
     created() {
         setTimeout(() => {
-            this.boxArr = Array.from({length: 1}).map((i, ind) => ({
-                width: 100,
-                height: 100,
+            this.boxArr = Array.from({length: 4}).map((i, ind) => ({
+                width: 200,
+                height: 200,
                 left: Math.round(Math.random() * 700 ),
                 top: Math.round(Math.random() * 300) ,
                 id: 'box' + ind,
@@ -113,7 +133,7 @@ export default {
             }));
             this.oldWidth = 1400;
             this.oldHeight =  600;
-        }, 1000)
+        }, 2000)
     },
     mounted(){
 
