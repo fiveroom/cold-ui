@@ -211,6 +211,7 @@ export default {
             }
             this.$nextTick(() => {
                 const slots = this.$slots.default;
+                this.ctx.clearRect(0, 0, this.box.width, this.box.height);
                 slots?.forEach(item => {
                     const comp = item.componentInstance;
                     if (comp && comp.$options.name === 'coReBox') {
