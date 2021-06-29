@@ -1,10 +1,17 @@
 <template>
     <div
         class="co-re_box-home"
-        :class="{'co-re_box-home-is-move': mouseAction, 'co-re_box-home-check': boxActive, 'co-re_box-home-animal': openAnimal }"
+        :class="{
+            'co-re_box-home-is-move': mouseAction,
+            'co-re_box-home-check': boxActive,
+            'co-re_box-home-active': !lock,
+        }"
+        tabindex="0"
         :style="{ 'z-index': this.zIndex, 'outline-color': tipsColorIns}"
         @mousedown.stop="mouseDownEvent"
     >
+        <!--                    'co-re_box-home-animal': openAnimal
+        -->
         <div class="co-re_box-body" ref="bodyEL">
             <slot></slot>
         </div>
@@ -35,7 +42,7 @@
 <script>
 // event : resizing dragging resized check-box
 import {uId, numToFixed, verifyColor} from '../../tools';
-import { debounce } from "lodash";
+import {debounce} from "lodash";
 
 export default {
     name: "coReBox",
@@ -92,7 +99,7 @@ export default {
         },
         trickList: {
             default: () => (["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc", "cm"]),
-            validator(val){
+            validator(val) {
                 let arr = ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc", "cm"];
                 return val.every(i => arr.includes(i))
             }
@@ -134,14 +141,14 @@ export default {
             boxActive: false,
             resizeEndDe: null,
             getParentInfoDe: null,
-            reloadDe: debounce(this.reload, 100),
+            reloadDe: debounce(this.reload, 30),
             moveHand: true,
             closeAnimal: debounce(() => this.openAnimal = false, 50)
         }
     },
     methods: {
-        trickClass(val){
-          return !!this.mouseAction ? (this.mouseAction === val ? 'co-re_box-trick--active': '') : ''
+        trickClass(val) {
+            return !!this.mouseAction ? (this.mouseAction === val ? 'co-re_box-trick--active' : '') : ''
         },
         getParentInfo() {
             const parent = this.$el.offsetParent;
@@ -159,7 +166,7 @@ export default {
                 event.preventDefault();
                 // 鼠标在父元素中的位置
                 if (this.mouseAction === 'move') {
-                    this.actionMove(event.pageX - this.sizeData.lDis , event.pageY - this.sizeData.tDis);
+                    this.actionMove(event.pageX - this.sizeData.lDis, event.pageY - this.sizeData.tDis);
                 } else {
                     if (this.mouseAction.includes('b'))
                         Object.assign(location, this.actionB(event.pageY - this.sizeData.tDis))
@@ -186,11 +193,11 @@ export default {
             }
         },
         mouseDownEvent(event) {
-            if(this.lock) return;
-            if(event.button !== 0) return
-            const { movetype: moveType } = event.target.dataset;
+            if (this.lock) return;
+            if (event.button !== 0) return
+            const {movetype: moveType} = event.target.dataset;
             this.mouseAction = moveType;
-            if(moveType){
+            if (moveType) {
                 this.boxActive = true;
                 this.$emit('check-box', this.ids);
                 this.sizeData = {
@@ -203,7 +210,7 @@ export default {
                 }
             }
         },
-        emitResizeData(eventType){
+        emitResizeData(eventType) {
             return {
                 rect: {
                     h: this.height,
@@ -223,8 +230,8 @@ export default {
             this.setTransform(this.left, this.top);
         },
         actionMoveByStep(step, topStu) {
-            if(this.lock) return;
-            if(topStu){
+            if (this.lock) return;
+            if (topStu) {
                 this.top = this.verifyTop(this.top + step);
             } else {
                 this.left = this.verifyLeft(this.left + step);
@@ -238,7 +245,7 @@ export default {
             }
             // this.resizeEndDe()
         },
-        verifyLeft(needL){
+        verifyLeft(needL) {
             if (needL < 0) {
                 needL = 0;
             } else if (needL > this.maxValue.maxLeft) {
@@ -246,7 +253,7 @@ export default {
             }
             return numToFixed(needL)
         },
-        verifyTop(needT){
+        verifyTop(needT) {
             if (needT < 0) {
                 needT = 0;
             } else if (needT > this.maxValue.maxTop) {
@@ -266,7 +273,7 @@ export default {
                 width: this.width
             }
         },
-        setActive(val){
+        setActive(val) {
             this.boxActive = val;
         },
         actionL(val) {
@@ -298,7 +305,7 @@ export default {
                 needH = this.minHeight;
                 needT = this.top + this.height - this.minHeight;
             }
-            this.height =  numToFixed(needH);
+            this.height = numToFixed(needH);
             this.top = numToFixed(needT);
             return {
                 height: this.height,
@@ -331,7 +338,7 @@ export default {
 
         },
 
-        mouseDownOther(){
+        mouseDownOther() {
             this.boxActive = false;
             this.$emit('uncheck-box', this.ids)
         },
@@ -339,7 +346,7 @@ export default {
             document.documentElement.addEventListener('mousemove', this.boxMove);
             document.documentElement.addEventListener('mousedown', this.mouseDownOther);
             document.documentElement.addEventListener('mouseup', this.mouseCancel);
-            if(this.auToParentSize){
+            if (this.auToParentSize) {
                 window.addEventListener('resize', this.getParentInfoDe);
             }
         },
@@ -347,7 +354,7 @@ export default {
             document.documentElement.removeEventListener('mousemove', this.boxMove);
             document.documentElement.removeEventListener('mousedown', this.mouseDownOther);
             document.documentElement.removeEventListener('mouseup', this.mouseCancel);
-            if(this.auToParentSize){
+            if (this.auToParentSize) {
                 window.removeEventListener('resize', this.getParentInfoDe);
             }
 
@@ -364,7 +371,7 @@ export default {
         setOpacity() {
             this.$el.style.opacity = '1';
         },
-        reload(){
+        reload() {
             this.openAnimal = true;
             this.setOpacity();
             this.setTransform(this.left, this.top);
@@ -372,7 +379,7 @@ export default {
             this.setWidth();
             this.closeAnimal();
         },
-        setParentSize(size){
+        setParentSize(size) {
             this.parentDis = {
                 xV: size.xV,
                 yV: size.yV,
@@ -382,11 +389,10 @@ export default {
         }
     },
     created() {
-        this.resizeEndDe = debounce(()=>this.$emit('resized', this.emitResizeData('init')), 500);
-        if(this.auToParentSize){
+        this.resizeEndDe = debounce(() => this.$emit('resized', this.emitResizeData('init')), 500);
+        if (this.auToParentSize) {
             this.getParentInfoDe = debounce(this.getParentInfo, 500);
         }
-        // this.reloadDe = debounce(this.reload, 300);
     },
     mounted() {
         this.getParentInfo();
@@ -404,26 +410,26 @@ export default {
         willChange() {
             return this.mouseAction ? 'transform' : 'auto'
         },
-        ids(){
+        ids() {
             return {
                 boxId: this.boxId,
                 compId: this.compId,
             }
         },
-        tipsColorIns(){
+        tipsColorIns() {
             return verifyColor(this.tipsColor.toString(), '#007fd4')
         }
     },
     watch: {
         trickList: {
-          immediate: true,
-          handler(val){
-              if(Array.isArray(val)){
-                  let a = ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc"];
-                  this.trickArr = val.filter(i => a.includes(i));
-                  this.moveHand = val.includes('cm');
-              }
-          }
+            immediate: true,
+            handler(val) {
+                if (Array.isArray(val)) {
+                    let a = ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc"];
+                    this.trickArr = val.filter(i => a.includes(i));
+                    this.moveHand = val.includes('cm');
+                }
+            }
         },
         h: {
             immediate: true,
@@ -455,8 +461,8 @@ export default {
         },
         lock: {
             immediate: true,
-            handler(v){
-                if(!v){
+            handler(v) {
+                if (!v) {
                     this.addEvent()
                 } else {
                     this.mouseDownOther();
@@ -472,6 +478,7 @@ export default {
 <style scoped lang="scss">
 @import "../../global.variate";
 @import "../../global.style";
+
 $name: 're_box';
 
 $trick-width: 10px;
@@ -482,7 +489,7 @@ $trick-box-out: - $trick-width / 2;
 $trick-show-size: 2px;
 $trick-split: 8px;
 $trick-border: $trick-show-size solid $trick-color;
-.#{$prefix}-#{$name}-home{
+.#{$prefix}-#{$name}-home {
     position: absolute;
     z-index: 0;
     will-change: auto;
@@ -492,25 +499,27 @@ $trick-border: $trick-show-size solid $trick-color;
     transition-property: box-shadow;
     transition-duration: .2s;
     opacity: 0;
-    box-shadow: 0 3px 1px -2px rgba(0,0,0,.2), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
-    &:focus{
-        //background-color: red;
-        outline: none;
+    box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
+    &-active{
+        &:active {
+            box-shadow: 0 5px 5px -3px rgba(0, 0, 0, .2), 0 8px 10px 1px rgba(0, 0, 0, .1), 0 3px 14px 2px rgba(0, 0, 0, .12);
+        }
+        &:focus{
+            outline: 1px dashed $trick-color;
+        }
     }
 
-    &:active{
-        // transition: box-shadow 200ms cubic-bezier(0, 0, 0.2, 1);
-        box-shadow: 0 5px 5px -3px rgba(0,0,0,.2), 0 8px 10px 1px rgba(0,0,0,.1), 0 3px 14px 2px rgba(0,0,0,.12);
-    }
-    &-animal{
+    &-animal {
         transition-property: transform, width, height, opacity;
         transition-duration: .45s;
         transition-timing-function: ease-out;
     }
-    &-check{
+
+    &-check {
         outline: 1px dashed $trick-color;
     }
-    &-is-move{
+
+    &-is-move {
         user-select: none;
         will-change: transform;
     }
@@ -521,7 +530,8 @@ $trick-border: $trick-show-size solid $trick-color;
     display: block;
     font-size: 1px;
     z-index: 2;
-    &--line{
+
+    &--line {
         content: "";
         display: block;
         background-color: $trick-color;
@@ -531,9 +541,11 @@ $trick-border: $trick-show-size solid $trick-color;
         transition-duration: .15s;
         opacity: 0;
     }
-    &-tc,&-bc,&-lc,&-rc{
+
+    &-tc, &-bc, &-lc, &-rc {
         display: flex;
-        &:hover>.#{$prefix}-#{$name}-trick--line{
+
+        &:hover > .#{$prefix}-#{$name}-trick--line {
             opacity: 1;
             //transition-property: opacity;
             transition-duration: .25s;
@@ -548,23 +560,26 @@ $trick-border: $trick-show-size solid $trick-color;
     &-bc {
         bottom: $trick-box-out;
     }
-    &-bc,&-tc{
+
+    &-bc, &-tc {
         align-items: center;
         justify-content: center;
-        cursor: row-resize;
+        cursor: n-resize;
         left: $trick-corner-width + $trick-split;
         height: $trick-width;
         right: $trick-corner-width + $trick-split;
-        &>.#{$prefix}-#{$name}-trick--line{
+
+        & > .#{$prefix}-#{$name}-trick--line {
             transform-origin: bottom;
             width: 100%;
             height: $trick-show-size;
         }
 
-        &.co-re_box-trick--active>.#{$prefix}-#{$name}-trick--line{
+        &.co-re_box-trick--active > .#{$prefix}-#{$name}-trick--line {
             opacity: 1;
         }
     }
+
     &-lc {
         left: $trick-box-out;
     }
@@ -573,23 +588,26 @@ $trick-border: $trick-show-size solid $trick-color;
         right: $trick-box-out;
 
     }
-    &-lc,&-rc{
+
+    &-lc, &-rc {
         justify-content: center;
         align-items: center;
-        cursor: col-resize;
+        cursor: e-resize;
         top: $trick-corner-width + $trick-split;
         bottom: $trick-corner-width + $trick-split;
         width: $trick-width;
-        &>.#{$prefix}-#{$name}-trick--line{
+
+        & > .#{$prefix}-#{$name}-trick--line {
             transform-origin: left;
             height: 100%;
             width: $trick-show-size;
         }
 
-        &.co-re_box-trick--active>.#{$prefix}-#{$name}-trick--line{
+        &.co-re_box-trick--active > .#{$prefix}-#{$name}-trick--line {
             opacity: 1;
         }
     }
+
     &-tr {
         top: $trick-out;
         right: $trick-out;
@@ -605,6 +623,7 @@ $trick-border: $trick-show-size solid $trick-color;
         border-top: $trick-border;
         border-left: $trick-border;
     }
+
     &-br {
         bottom: $trick-out;
         right: $trick-out;
@@ -621,16 +640,19 @@ $trick-border: $trick-show-size solid $trick-color;
         border-bottom-left-radius: 2px;
     }
 
-    &-bl,&-tr,&-br,&-tl{
+    &-bl, &-tr, &-br, &-tl {
         opacity: 0;
         width: $trick-corner-width + $trick-show-size + $trick-out;
         height: $trick-corner-width + $trick-show-size + $trick-out;
-        &:hover{
+
+        &:hover {
             opacity: 1;
             transition: opacity .25s ease-out;
         }
+
         transition: opacity .25s ease-in;
-        &.co-re_box-trick--active{
+
+        &.co-re_box-trick--active {
             opacity: 1;
         }
     }
@@ -645,7 +667,8 @@ $trick-border: $trick-show-size solid $trick-color;
         cursor: nwse-resize;
     }
 }
-.#{$prefix}-#{$name}-move{
+
+.#{$prefix}-#{$name}-move {
     position: absolute;
     display: block;
     top: 0;
@@ -656,7 +679,8 @@ $trick-border: $trick-show-size solid $trick-color;
     min-height: 30px;
     cursor: move;
 }
-.#{$prefix}-#{$name}-body{
+
+.#{$prefix}-#{$name}-body {
     width: 100%;
     height: 100%;
     position: relative;

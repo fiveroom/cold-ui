@@ -212,9 +212,12 @@ export default {
             this.$nextTick(() => {
                 const slots = this.$slots.default;
                 this.ctx.clearRect(0, 0, this.box.width, this.box.height);
+                let hasKeys = Object.keys(this.compIds);
+                let newKeys = [];
                 slots?.forEach(item => {
                     const comp = item.componentInstance;
                     if (comp && comp.$options.name === 'coReBox') {
+                        newKeys.push(comp.compId);
                         if (this.compIds[comp.compId]) return;
                         this.compIds[comp.compId] = comp;
                         if (this.toolConfigIns.useStand) {
@@ -225,6 +228,11 @@ export default {
                             comp.$on('check-box', this.getActiveBox.bind(this));
                             comp.$on('uncheck-box', this.getUnActiveBox.bind(this));
                         }
+                    }
+                })
+                hasKeys.forEach(i => {
+                    if(!newKeys.includes(i)){
+                        Reflect.deleteProperty(this.compIds, i);
                     }
                 })
                 this.setParentSizeToBox()
@@ -242,7 +250,7 @@ export default {
                 this.compIds[compId].setActive(!stu)
             } else {
                 this.checkBoxes.forEach(i => {
-                    this.compIds[i].setActive(false)
+                    this.compIds[i]?.setActive(false)
                 })
                 this.checkBoxes.clear()
                 this.checkBoxes.add(compId);
@@ -548,7 +556,7 @@ export default {
         clearCheck() {
             this.checkBoxes.clear();
             this.checkBoxes.forEach(i => {
-                this.compIds[i].setActive(false)
+                this.compIds[i]?.setActive(false)
             })
         },
         bindDocEvent() {
@@ -562,7 +570,7 @@ export default {
         },
         setParentSizeToBox() {
             Object.keys(this.compIds).forEach(i => {
-                this.compIds[i].setParentSize(this.box);
+                this.compIds[i]?.setParentSize(this.box);
             })
         },
         // 页面大小变化
@@ -666,7 +674,6 @@ export default {
 $name: 're_page';
 .#{$prefix}-#{$name} {
     &-home {
-
         width: 100%;
         height: 100%;
         position: relative;

@@ -1,5 +1,4 @@
 <template>
-
     <div>
         <button @click="addBox">add</button>
         <button @click="box.lock = !box.lock">set Data</button>
@@ -24,9 +23,6 @@
                     top: 'top',
                     left: 'left'
                 }"
-                @dragenter.native="dragenter($event)"
-                @drop.native="drop($event)"
-                @dragover.native.prevent="dragover($event)"
                 :old-height="oldHeight"
                 :old-width="oldWidth"
                 :show-dis="openDisStu"
@@ -42,12 +38,12 @@
                     :h.sync="i.height"
                     :l.sync="i.left"
                     :t.sync="i.top"
-                    :lock="i.lock"
+                    :lock="false"
                 >
                 </CoReBox>
             </co-re-page>
         </div>
-        <div class="drag-show" ref="dragShow">
+        <div class="drag-show" :style="{'outline-color': tipsColor}" ref="dragShow">
 
         </div>
         <div>
@@ -65,10 +61,12 @@
 
 <script>
 import HelloWorld from "./components/HelloWorld";
-import {uId} from "../packages";
+import {s4, uId} from "../packages";
 
 // import 'cold-ui/lib/cold-ui.css'
 import {coRePage, coReBox} from "../packages";
+import {debounce, throttle} from "lodash";
+
 // import { coReBox, coRePage } from "cold-ui";
 
 export default {
@@ -138,44 +136,25 @@ export default {
                 item[i] = j;
             })
         },
-        dragStart(event) {
-            console.log('dragStart :>> ', event);
-            this.$refs.dragShow.style.display = 'block';
-            this.$refs.dragShow.style.transform = `translate(${event.pageX}px, ${event.pageY + 100}px)`;
-            let img = new Image();
-            img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' %3E%3Cpath /%3E%3C/svg%3E";
-            event.dataTransfer.setDragImage(img, 0, 0)
-        },
-        dragenter(event) {
-            event.dataTransfer.dropEffect = 'move';
-            console.log('dragenter :>> ', event);
-        },
-        drop(event) {
-            console.log('drop :>> ', event);
-        },
-        dragover(event) {
-            console.log('dragover :>> ', event);
-        },
-        drag(event) {
-            console.log('drag :>> ', event);
-            this.$refs.dragShow.style.transform = `translate(${event.pageX}px, ${event.pageY}px)`;
-        },
-        dragend() {
-            this.$refs.dragShow.style.display = 'none';
-        },
+
         checkBox(event) {
             this.boxCheckStu = true;
             this.$refs.dragShow.style.display = 'block';
-            this.$refs.dragShow.style.transform = `translate(${event.pageX - 50}px, ${event.pageY - 50}px)`;
-        }
+            this.$refs.dragShow.style.transform = `translate(${event.pageX - 100}px, ${event.pageY - 100}px)`;
+        },
+        setActiveDe: debounce( function (source){
+            console.log('source :>> ', source.ids);
+            this.$refs.coRePage.$el.focus();
+            this.$refs.coRePage.getActiveBox(source.ids);
+        }, 500)
     },
 
     created() {
         setTimeout(() => {
-            this.boxArr = Array.from({length: 4}).map((i, ind) => ({
+            this.boxArr = Array.from({length: 2}).map((i, ind) => ({
                 width: 200,
                 height: 200,
-                left: Math.round(Math.random() * 700),
+                left: Math.round(Math.random() * 1000),
                 top: Math.round(Math.random() * 300),
                 id: 'box' + ind,
                 lock: false
@@ -187,38 +166,58 @@ export default {
     mounted() {
         document.documentElement.addEventListener('mousemove', (event) => {
             if (this.boxCheckStu) {
-                if (event.pageX - 50 >= this.coRePageInfo.left) {
+                let leftBox = event.pageX - 100;
+                let topBox = event.pageY - 100;
+                if (leftBox >= this.coRePageInfo.left
+                    && topBox >= this.coRePageInfo.top
+                    && topBox + 200 <= this.coRePageInfo.bottom
+                    && leftBox + 200 <= this.coRePageInfo.right
+                ) {
                     if (!this.addId) {
-                        this.boxArr.push({
+                        this.addId = 'newBox_' + s4();
+                        let len = this.boxArr.push({
                             width: 200,
                             height: 200,
-                            left: event.pageX - 50 - this.coRePageInfo.left,
-                            top: event.pageY - 50 - this.coRePageInfo.top,
-                            id: 'newBox',
+                            left: leftBox - this.coRePageInfo.left,
+                            top: topBox - this.coRePageInfo.top,
+                            id: this.addId,
                             lock: false
                         });
-                        this.addId = 'newBox';
                         this.$refs.dragShow.style.display = 'none';
-                        setTimeout(() => {
-                            this.$refs.CoReBox4[0].mouseDownEvent({
+                        this.$nextTick(() =>{
+                            const source = this.$refs[`CoReBox${len - 1}`][0];
+                            source.mouseDownEvent({
                                 target: {
                                     dataset: {
                                         movetype: 'move'
                                     }
                                 },
-                                pageX: event.pageX - 50 +100 ,
-                                pageY: event.pageY - 50 + 100,
+                                pageX: event.pageX,
+                                pageY: event.pageY,
                                 button: 0
                             });
-                        }, 100)
+                            this.setActiveDe(source)
+                        })
+                        // setTimeout(() => {
+                        //     this.$refs[`CoReBox${len - 1}`][0].mouseDownEvent({
+                        //         target: {
+                        //             dataset: {
+                        //                 movetype: 'move'
+                        //             }
+                        //         },
+                        //         pageX: event.pageX ,
+                        //         pageY: event.pageY ,
+                        //         button: 0
+                        //     });
+                        // }, 100)
                     }
                 } else {
                     if (this.boxArr[this.boxArr.length - 1].id === this.addId) {
                         this.boxArr.pop();
-                        this.addId = '';
+                        this.addId = null;
                     }
                     this.$refs.dragShow.style.display = 'block';
-                    this.$refs.dragShow.style.transform = `translate(${event.pageX - 50}px, ${event.pageY - 50}px)`;
+                    this.$refs.dragShow.style.transform = `translate(${event.pageX - 100}px, ${event.pageY - 100}px)`;
                 }
                 event.preventDefault();
             }
@@ -228,6 +227,7 @@ export default {
             if (this.boxCheckStu) {
                 this.boxCheckStu = false;
                 this.$refs.dragShow.style.display = 'none';
+                this.addId = null;
             }
         })
         this.coRePageInfo = this.$refs.coRePage.$el.getBoundingClientRect();
@@ -284,10 +284,12 @@ export default {
 
 .drag-show {
     cursor: grabbing;
-    width: 100px;
-    height: 100px;
+    width: 200px;
+    height: 200px;
     position: absolute;
-    background-color: #007fd4;
+    background-color: transparent;
+    outline-style: dashed ;
+    outline-width: 1px;
     top: 0;
     left: 0;
     display: none;
