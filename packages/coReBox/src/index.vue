@@ -8,21 +8,18 @@
         }"
         tabindex="0"
         :style="{ 'z-index': this.zIndex, 'outline-color': tipsColorIns}"
-        @mousedown.stop="mouseDownEvent"
     >
-        <!--                    'co-re_box-home-animal': openAnimal
-        -->
         <div class="co-re_box-body" ref="bodyEL">
             <slot></slot>
         </div>
         <i
             class="co-re_box-move"
-            data-movetype="move"
             :style="{
                 height: moveBoxHeight
             }"
             v-show="!lock"
             v-if="moveHand"
+            ref="boxMove"
         ></i>
         <template v-if="!lock">
             <i
@@ -32,6 +29,7 @@
                 :class="[`co-re_box-trick-${i}`, trickClass(i)]"
                 :style="{ 'border-color': tipsColorIns}"
                 :data-movetype="i"
+                @mousedown="mouseDownEvent($event, i)"
             >
                 <i v-if="i.includes('c')" class="co-re_box-trick--line" :style="{'background-color': tipsColorIns}"></i>
             </i>
@@ -107,6 +105,14 @@ export default {
         tipsColor: {
             type: String,
             default: '#007fd4'
+        },
+        sourceEle: {
+            type: [String, HTMLElement],
+            default: ''
+        },
+        moveSelector: {
+            type: String,
+            default: ''
         }
     },
     data() {
@@ -140,7 +146,7 @@ export default {
             compId: uId(),
             boxActive: false,
             resizeEndDe: null,
-            getParentInfoDe: null,
+            getParentInfoDe: debounce(this.getParentInfo, 500),
             reloadDe: debounce(this.reload, 30),
             moveHand: true,
             closeAnimal: debounce(() => this.openAnimal = false, 50)
@@ -192,12 +198,11 @@ export default {
                 this.setHeight()
             }
         },
-        mouseDownEvent(event) {
+        mouseDownEvent(event, type) {
             if (this.lock) return;
             if (event.button !== 0) return
-            const {movetype: moveType} = event.target.dataset;
-            this.mouseAction = moveType;
-            if (moveType) {
+            this.mouseAction = type;
+            if (this.mouseAction) {
                 this.boxActive = true;
                 this.$emit('check-box', this.ids);
                 this.sizeData = {
@@ -324,8 +329,6 @@ export default {
                 height: this.height
             }
         },
-
-
         mouseCancel() {
             if (this.mouseAction) {
                 this.$emit('update:w', this.width);
@@ -337,7 +340,6 @@ export default {
             }
 
         },
-
         mouseDownOther() {
             this.boxActive = false;
             this.$emit('uncheck-box', this.ids)
@@ -386,15 +388,43 @@ export default {
                 width: size.width,
                 height: size.height
             }
+        },
+        setMoveEvent(){
+            let moveEle;
+            if(this.moveSelector){
+                moveEle = this.$refs.bodyEL.querySelector(this.moveSelector.toString());
+            }
+            this.moveHand = !moveEle;
+            moveEle = moveEle || this.$refs.boxMove;
+            moveEle.addEventListener('mousedown', event => {
+                event.stopPropagation();
+                this.mouseDownEvent(event, 'move')
+            })
         }
     },
     created() {
         this.resizeEndDe = debounce(() => this.$emit('resized', this.emitResizeData('init')), 500);
-        if (this.auToParentSize) {
-            this.getParentInfoDe = debounce(this.getParentInfo, 500);
+        if (Array.isArray(this.trickList)) {
+            let a = ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc"];
+            this.trickArr = this.trickList.filter(i => a.includes(i));
+            this.moveHand = this.trickList.includes('cm');
         }
     },
     mounted() {
+        if (this.sourceEle) {
+            let ele = null;
+            if (this.sourceEle instanceof HTMLElement) {
+                ele = this.sourceEle;
+            } else {
+                if (Object.prototype.toString.call(this.sourceEle) === "[object String]") {
+                    ele = document.querySelector(this.sourceEle);
+                }
+            }
+            if(ele){
+                ele.appendChild(this.$el)
+            }
+        }
+        this.setMoveEvent()
         this.getParentInfo();
     },
     beforeDestroy() {
@@ -421,16 +451,6 @@ export default {
         }
     },
     watch: {
-        trickList: {
-            immediate: true,
-            handler(val) {
-                if (Array.isArray(val)) {
-                    let a = ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc"];
-                    this.trickArr = val.filter(i => a.includes(i));
-                    this.moveHand = val.includes('cm');
-                }
-            }
-        },
         h: {
             immediate: true,
             handler(v) {
@@ -462,6 +482,7 @@ export default {
         lock: {
             immediate: true,
             handler(v) {
+                console.log('v :>> ', v);
                 if (!v) {
                     this.addEvent()
                 } else {
@@ -471,7 +492,6 @@ export default {
             }
         }
     }
-
 }
 </script>
 
@@ -499,12 +519,16 @@ $trick-border: $trick-show-size solid $trick-color;
     transition-property: box-shadow;
     transition-duration: .2s;
     opacity: 0;
-    box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2), 0 2px 2px 0 rgba(0, 0, 0, .14), 0 1px 5px 0 rgba(0, 0, 0, .12);
-    &-active{
+    box-shadow: 0 3px 1px -2px rgba(0, 0, 0, .2),
+    0 2px 2px 0 rgba(0, 0, 0, .14),
+    0 1px 5px 0 rgba(0, 0, 0, .12);
+
+    &-active {
         &:active {
             box-shadow: 0 5px 5px -3px rgba(0, 0, 0, .2), 0 8px 10px 1px rgba(0, 0, 0, .1), 0 3px 14px 2px rgba(0, 0, 0, .12);
         }
-        &:focus{
+
+        &:focus {
             outline: 1px dashed $trick-color;
         }
     }

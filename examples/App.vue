@@ -11,37 +11,37 @@
             </ul>
         </div>
         <div id="app">
-            <co-re-page
-                ref="coRePage"
-                :boxArr="boxArr"
-                id-prop-name="id"
-                :tips-color="tipsColor"
-                :use-stand="true"
-                :rect-prop-rewrite="{
-                    width: 'width',
-                    height: 'height',
-                    top: 'top',
-                    left: 'left'
-                }"
-                :old-height="oldHeight"
-                :old-width="oldWidth"
-                :show-dis="openDisStu"
-                :min-show-dis="minShowDis"
-            >
-                <CoReBox
-                    :ref="`CoReBox${ind}`"
-                    v-for="(i, ind) in boxArr"
-                    :key="ind"
-                    :tips-color="tipsColor"
-                    :boxId="i.id"
-                    :w.sync="i.width"
-                    :h.sync="i.height"
-                    :l.sync="i.left"
-                    :t.sync="i.top"
-                    :lock="false"
-                >
-                </CoReBox>
-            </co-re-page>
+<!--            <co-re-page-->
+<!--                ref="coRePage"-->
+<!--                :boxArr="boxArr"-->
+<!--                id-prop-name="id"-->
+<!--                :tips-color="tipsColor"-->
+<!--                :use-stand="true"-->
+<!--                :rect-prop-rewrite="{-->
+<!--                    width: 'width',-->
+<!--                    height: 'height',-->
+<!--                    top: 'top',-->
+<!--                    left: 'left'-->
+<!--                }"-->
+<!--                :old-height="oldHeight"-->
+<!--                :old-width="oldWidth"-->
+<!--                :show-dis="openDisStu"-->
+<!--                :min-show-dis="minShowDis"-->
+<!--            >-->
+<!--                <CoReBox-->
+<!--                    :ref="`CoReBox${ind}`"-->
+<!--                    v-for="(i, ind) in boxArr"-->
+<!--                    :key="ind"-->
+<!--                    :tips-color="tipsColor"-->
+<!--                    :boxId="i.id"-->
+<!--                    :w.sync="i.width"-->
+<!--                    :h.sync="i.height"-->
+<!--                    :l.sync="i.left"-->
+<!--                    :t.sync="i.top"-->
+<!--                    :lock="false"-->
+<!--                >-->
+<!--                </CoReBox>-->
+<!--            </co-re-page>-->
         </div>
         <div class="drag-show" :style="{'outline-color': tipsColor}" ref="dragShow">
 
@@ -56,6 +56,17 @@
             最小间距 <input type="number" v-model="minShowDis">
 
         </div>
+        <CoReBox
+            v-bind.sync="dataTR"
+            :source-ele="'body'"
+            v-if="openTest"
+            :au-to-parent-size="true"
+            move-selector=".app-move"
+            :trickList="['cm']"
+        >
+            <header class="app-move">jajaja </header>
+        </CoReBox>
+        <button @click="openTest = !openTest">打开</button>
     </div>
 </template>
 
@@ -78,6 +89,7 @@ export default {
     },
     data() {
         return {
+            openTest: false,
             boxArr: [],
             minShowDis: 10,
             openDisStu: false,
@@ -87,6 +99,13 @@ export default {
                 l: 0,
                 t: 0,
             },
+            dataTR: {
+                w: 100,
+                h: 100,
+                l: 0,
+                t: 0,
+            },
+
             coRePageInfo: null,
             tipsColor: '#000',
             oldHeight: 0,
@@ -164,74 +183,74 @@ export default {
         }, 2000)
     },
     mounted() {
-        document.documentElement.addEventListener('mousemove', (event) => {
-            if (this.boxCheckStu) {
-                let leftBox = event.pageX - 100;
-                let topBox = event.pageY - 100;
-                if (leftBox >= this.coRePageInfo.left
-                    && topBox >= this.coRePageInfo.top
-                    && topBox + 200 <= this.coRePageInfo.bottom
-                    && leftBox + 200 <= this.coRePageInfo.right
-                ) {
-                    if (!this.addId) {
-                        this.addId = 'newBox_' + s4();
-                        let len = this.boxArr.push({
-                            width: 200,
-                            height: 200,
-                            left: leftBox - this.coRePageInfo.left,
-                            top: topBox - this.coRePageInfo.top,
-                            id: this.addId,
-                            lock: false
-                        });
-                        this.$refs.dragShow.style.display = 'none';
-                        this.$nextTick(() =>{
-                            const source = this.$refs[`CoReBox${len - 1}`][0];
-                            source.mouseDownEvent({
-                                target: {
-                                    dataset: {
-                                        movetype: 'move'
-                                    }
-                                },
-                                pageX: event.pageX,
-                                pageY: event.pageY,
-                                button: 0
-                            });
-                            this.setActiveDe(source)
-                        })
-                        // setTimeout(() => {
-                        //     this.$refs[`CoReBox${len - 1}`][0].mouseDownEvent({
-                        //         target: {
-                        //             dataset: {
-                        //                 movetype: 'move'
-                        //             }
-                        //         },
-                        //         pageX: event.pageX ,
-                        //         pageY: event.pageY ,
-                        //         button: 0
-                        //     });
-                        // }, 100)
-                    }
-                } else {
-                    if (this.boxArr[this.boxArr.length - 1].id === this.addId) {
-                        this.boxArr.pop();
-                        this.addId = null;
-                    }
-                    this.$refs.dragShow.style.display = 'block';
-                    this.$refs.dragShow.style.transform = `translate(${event.pageX - 100}px, ${event.pageY - 100}px)`;
-                }
-                event.preventDefault();
-            }
-        })
+        // document.documentElement.addEventListener('mousemove', (event) => {
+        //     if (this.boxCheckStu) {
+        //         let leftBox = event.pageX - 100;
+        //         let topBox = event.pageY - 100;
+        //         if (leftBox >= this.coRePageInfo.left
+        //             && topBox >= this.coRePageInfo.top
+        //             && topBox + 200 <= this.coRePageInfo.bottom
+        //             && leftBox + 200 <= this.coRePageInfo.right
+        //         ) {
+        //             if (!this.addId) {
+        //                 this.addId = 'newBox_' + s4();
+        //                 let len = this.boxArr.push({
+        //                     width: 200,
+        //                     height: 200,
+        //                     left: leftBox - this.coRePageInfo.left,
+        //                     top: topBox - this.coRePageInfo.top,
+        //                     id: this.addId,
+        //                     lock: false
+        //                 });
+        //                 this.$refs.dragShow.style.display = 'none';
+        //                 this.$nextTick(() =>{
+        //                     const source = this.$refs[`CoReBox${len - 1}`][0];
+        //                     source.mouseDownEvent({
+        //                         target: {
+        //                             dataset: {
+        //                                 movetype: 'move'
+        //                             }
+        //                         },
+        //                         pageX: event.pageX,
+        //                         pageY: event.pageY,
+        //                         button: 0
+        //                     });
+        //                     this.setActiveDe(source)
+        //                 })
+        //                 // setTimeout(() => {
+        //                 //     this.$refs[`CoReBox${len - 1}`][0].mouseDownEvent({
+        //                 //         target: {
+        //                 //             dataset: {
+        //                 //                 movetype: 'move'
+        //                 //             }
+        //                 //         },
+        //                 //         pageX: event.pageX ,
+        //                 //         pageY: event.pageY ,
+        //                 //         button: 0
+        //                 //     });
+        //                 // }, 100)
+        //             }
+        //         } else {
+        //             if (this.boxArr[this.boxArr.length - 1].id === this.addId) {
+        //                 this.boxArr.pop();
+        //                 this.addId = null;
+        //             }
+        //             this.$refs.dragShow.style.display = 'block';
+        //             this.$refs.dragShow.style.transform = `translate(${event.pageX - 100}px, ${event.pageY - 100}px)`;
+        //         }
+        //         event.preventDefault();
+        //     }
+        // })
 
-        document.documentElement.addEventListener('mouseup', (event) => {
-            if (this.boxCheckStu) {
-                this.boxCheckStu = false;
-                this.$refs.dragShow.style.display = 'none';
-                this.addId = null;
-            }
-        })
-        this.coRePageInfo = this.$refs.coRePage.$el.getBoundingClientRect();
-        console.log('this.coRePageInfo :>> ', this.coRePageInfo);
+        // document.documentElement.addEventListener('mouseup', (event) => {
+        //     if (this.boxCheckStu) {
+        //         this.boxCheckStu = false;
+        //         this.$refs.dragShow.style.display = 'none';
+        //         this.addId = null;
+        //     }
+        // })
+        // this.coRePageInfo = this.$refs.coRePage.$el.getBoundingClientRect();
+        // console.log('this.coRePageInfo :>> ', this.coRePageInfo);
 
     }
 
@@ -250,7 +269,11 @@ export default {
     z-index: 0;
     overflow: hidden;
 }
-
+body,html{
+    height: 100%;
+    width: 100%;
+    margin: 0;
+}
 .drag {
     width: 300px;
     height: 72vh;
@@ -295,5 +318,9 @@ export default {
     display: none;
     will-change: transform;
     transform-origin: left top;
+}
+
+.app-move{
+    background-color: #007fd4;
 }
 </style>
