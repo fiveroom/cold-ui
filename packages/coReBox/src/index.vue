@@ -2,9 +2,10 @@
     <div
         class="co-re_box-home"
         :class="{
-            'co-re_box-home-is-move': mouseAction,
+            'co-re_box-home-is-move': !!mouseAction,
             'co-re_box-home-check': boxActive,
             'co-re_box-home-active': !lock,
+            'co-re_box-home-animal': !disableAnimal && !mouseAction
         }"
         tabindex="0"
         :style="{ 'z-index': this.zIndex, 'outline-color': tipsColorIns}"
@@ -113,6 +114,10 @@ export default {
         moveSelector: {
             type: String,
             default: ''
+        },
+        disableAnimal: {
+            type: Boolean,
+            default: false
         }
     },
     data() {

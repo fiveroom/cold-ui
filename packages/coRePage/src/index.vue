@@ -7,14 +7,6 @@
         <div class="co-re_page-body">
             <slot></slot>
         </div>
-        <div
-            class="co-re_page-stand co-re_page-stand-x"
-            ref="standX"
-        ></div>
-        <div
-            class="co-re_page-stand co-re_page-stand-y"
-            ref="standY"
-        ></div>
         <object class="co-re_page-bgc co-re_page-bgc-resize"
                 ref="objectHtml"
                 height="100%" width="100%" type="text/html" data="about:blank">

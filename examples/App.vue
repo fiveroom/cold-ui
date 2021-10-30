@@ -2,46 +2,46 @@
     <div>
         <button @click="addBox">add</button>
         <button @click="box.lock = !box.lock">set Data</button>
-        <div class="drag">
-            <ul>
-                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag1</li>
-                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag2</li>
-                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag3</li>
-                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag4</li>
-            </ul>
-        </div>
+<!--        <div class="drag">-->
+<!--            <ul>-->
+<!--                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag1</li>-->
+<!--                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag2</li>-->
+<!--                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag3</li>-->
+<!--                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag4</li>-->
+<!--            </ul>-->
+<!--        </div>-->
         <div id="app">
-<!--            <co-re-page-->
-<!--                ref="coRePage"-->
-<!--                :boxArr="boxArr"-->
-<!--                id-prop-name="id"-->
-<!--                :tips-color="tipsColor"-->
-<!--                :use-stand="true"-->
-<!--                :rect-prop-rewrite="{-->
-<!--                    width: 'width',-->
-<!--                    height: 'height',-->
-<!--                    top: 'top',-->
-<!--                    left: 'left'-->
-<!--                }"-->
-<!--                :old-height="oldHeight"-->
-<!--                :old-width="oldWidth"-->
-<!--                :show-dis="openDisStu"-->
-<!--                :min-show-dis="minShowDis"-->
-<!--            >-->
-<!--                <CoReBox-->
-<!--                    :ref="`CoReBox${ind}`"-->
-<!--                    v-for="(i, ind) in boxArr"-->
-<!--                    :key="ind"-->
-<!--                    :tips-color="tipsColor"-->
-<!--                    :boxId="i.id"-->
-<!--                    :w.sync="i.width"-->
-<!--                    :h.sync="i.height"-->
-<!--                    :l.sync="i.left"-->
-<!--                    :t.sync="i.top"-->
-<!--                    :lock="false"-->
-<!--                >-->
-<!--                </CoReBox>-->
-<!--            </co-re-page>-->
+            <co-re-page
+                ref="coRePage"
+                :boxArr="boxArr"
+                id-prop-name="id"
+                :tips-color="tipsColor"
+                :use-stand="true"
+                :rect-prop-rewrite="{
+                    width: 'width',
+                    height: 'height',
+                    top: 'top',
+                    left: 'left'
+                }"
+                :old-height="oldHeight"
+                :old-width="oldWidth"
+                :show-dis="openDisStu"
+                :min-show-dis="minShowDis"
+            >
+                <CoReBox
+                    :ref="`CoReBox${ind}`"
+                    v-for="(i, ind) in boxArr"
+                    :key="ind"
+                    :tips-color="tipsColor"
+                    :boxId="i.id"
+                    :w.sync="i.width"
+                    :h.sync="i.height"
+                    :l.sync="i.left"
+                    :t.sync="i.top"
+                    :lock="false"
+                >
+                </CoReBox>
+            </co-re-page>
         </div>
         <div class="drag-show" :style="{'outline-color': tipsColor}" ref="dragShow">
 
@@ -92,7 +92,7 @@ export default {
             openTest: false,
             boxArr: [],
             minShowDis: 10,
-            openDisStu: false,
+            openDisStu: true    ,
             dataT: {
                 w: 100,
                 h: 100,
@@ -169,17 +169,21 @@ export default {
     },
 
     created() {
+        this.boxArr = Array.from({length: 2}).map((i, ind) => ({
+            width: 200,
+            height: 200,
+            left: Math.round(Math.random() * 1000),
+            top: Math.round(Math.random() * 300),
+            id: 'box' + ind,
+            lock: false
+        }));
+        this.oldWidth = 1400;
+        this.oldHeight = 600;
         setTimeout(() => {
-            this.boxArr = Array.from({length: 2}).map((i, ind) => ({
-                width: 200,
-                height: 200,
-                left: Math.round(Math.random() * 1000),
-                top: Math.round(Math.random() * 300),
-                id: 'box' + ind,
-                lock: false
-            }));
-            this.oldWidth = 1400;
-            this.oldHeight = 600;
+            this.boxArr.forEach((item) => {
+                item.left += 100;
+                item.top += 100;
+            })
         }, 2000)
     },
     mounted() {

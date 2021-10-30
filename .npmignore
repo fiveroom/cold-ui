@@ -4,3 +4,11 @@ vue.config.js
 .idea
 packages
 babel.config.js
+
+node_modules
+
+public
+
+dist
+
+examples
