@@ -19,7 +19,6 @@ export function getMiDiff(arrData, tar, hint){
     return {val: arr[0], hint, diffV: Math.abs(tar - arr[0])}
 }
 
-
 export function verifyColor(val, defVal){
     if(/^(#[0-9a-f]{6}|#[0-9a-f]{3}|rgb\([0-255]{1,3},[0-255]{1,3},[0-255]{1,3}\))$/i.test(val.toString())){
         return val

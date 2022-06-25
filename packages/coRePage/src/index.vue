@@ -7,10 +7,10 @@
         <div class="co-re_page-body">
             <slot></slot>
         </div>
-        <object class="co-re_page-bgc co-re_page-bgc-resize"
-                ref="objectHtml"
-                height="100%" width="100%" type="text/html" data="about:blank">
-        </object>
+<!--        <object class="co-re_page-bgc co-re_page-bgc-resize"-->
+<!--                ref="objectHtml"-->
+<!--                height="100%" width="100%" type="text/html" data="about:blank">-->
+<!--        </object>-->
         <canvas class="co-re_page-bgc co-re_page-bgc-hint" ref="canvas"></canvas>
     </div>
 </template>
@@ -19,6 +19,7 @@
 
 import { verifyColor} from "../../tools";
 import {throttle, debounce} from "lodash";
+import ResizeObserver from 'resize-observer-polyfill';
 
 export default {
     name: "coRePage",
@@ -120,12 +121,13 @@ export default {
             keyDownData: {},
             controlStu: false,
             setParentSizeToBoxDe: debounce(this.setParentSizeToBox, 500),
-            resizeBoxDe: debounce(this.resizeBox, 30),
             boxArrBack: null,
             clearStandDe: debounce(this.clearStand, 1000),
             ctx: null,
             alignLine: [],
-            toolConfigIns: {}
+            toolConfigIns: {},
+            resizeDebounce: debounce(this.refreshSize, 300),
+            ro: null
         }
     },
     watch: {
@@ -138,24 +140,34 @@ export default {
         oldHeight() {
             if (this.oldHeight !== this.oldBox.height) {
                 this.oldBox.height = this.oldHeight;
-                this.autoFirstResize && this.resizeBoxDe();
             }
         },
         oldWidth() {
             if (this.oldWidth !== this.oldBox.width) {
                 this.oldBox.width = this.oldWidth;
-                this.autoFirstResize && this.resizeBoxDe();
             }
         }
     },
     mounted() {
-        this.initBoxSize()
-        this.bindDocEvent();
+        // 对页面大小的监听不够灵活
+        // this.initBoxSize()
+        // this.bindDocEvent();
         this.ctx = this.$refs.canvas.getContext('2d');
-        this.initCtx();
+        // this.initCtx();
+
+    //    -------
+        this.ro = new ResizeObserver((entries) => {
+            const { contentRect } = entries[0];
+            this.resizeDebounce(contentRect);
+        });
+        this.ro.observe(this.$el);
     },
+
     beforeDestroy() {
-        this.clearDocEvent()
+        this.clearDocEvent();
+        this.setParentSizeToBoxDe?.cancel()
+        this.clearStandDe?.cancel()
+        this.resizeDebounce?.cancel()
     },
     created() {
         Object.assign(this.rectProp, this.rectPropRewrite);
@@ -182,8 +194,20 @@ export default {
       }
     },
     methods: {
-        initBoxSize() {
-            let rect = this.$el.getBoundingClientRect();
+        /**
+         *
+         * @param contentRect {DOMRectReadOnly}
+         */
+        refreshSize(contentRect){
+            this.initBoxSize(contentRect);
+            this.initCtx();
+            this.setParentSizeToBox();
+        },
+        /**\
+         *
+         * @param rect {DOMRectReadOnly}
+         */
+        initBoxSize(rect) {
             this.box.height = this.$el.clientHeight;
             this.box.width = this.$el.clientWidth;
             this.box.centerW = this.box.width / 2;
@@ -262,7 +286,8 @@ export default {
                 event.stopPropagation();
                 event.preventDefault();
                 this.checkBoxes.forEach(val => {
-                    this.keyDownData[val] = this.compIds[val].actionMoveByStep.apply(null, this.setStepVal(done))
+                    this.keyDownData[val] = this.compIds[val].actionMoveByStep.apply(null, this.setStepVal(done));
+                    this.compIds[val].useKey = true;
                 });
                 this.boxKeyDownEnd();
                 this.clearStandDe()
@@ -271,6 +296,7 @@ export default {
         boxKeyDownEnd: debounce(function () {
             Object.keys(this.keyDownData).forEach(val => {
                 const source = this.keyDownData[val];
+                this.compIds[val].useKey = false;
                 let obj = this.boxArrObj[source.boxId];
                 if (obj) {
                     obj.t = source.top;
@@ -551,14 +577,14 @@ export default {
                 this.compIds[i]?.setActive(false)
             })
         },
-        bindDocEvent() {
-            setTimeout(() => {
-                this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.resizeBoxDe);
-                this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.setParentSizeToBoxDe);
-            }, 500)
-        },
+        // bindDocEvent() {
+        //     setTimeout(() => {
+        //         this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.resizeBoxDe);
+        //         this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.setParentSizeToBoxDe);
+        //     }, 500)
+        // },
         clearDocEvent() {
-            document.removeEventListener('mousedown', this.clearCheck);
+            this.ro && this.ro.disconnect();
         },
         setParentSizeToBox() {
             Object.keys(this.compIds).forEach(i => {
@@ -566,28 +592,28 @@ export default {
             })
         },
         // 页面大小变化
-        resizeBox() {
-            if (!this.oldBox.width) {
-                this.oldBox.width = this.oldWidth || this.box.width;
-                this.oldBox.height = this.oldHeight || this.box.height;
-            }
-            this.initBoxSize()
-            this.initCtx();
-            let ratioW = this.oldBox.width / this.box.width;
-            let ratioH = this.oldBox.height / this.box.height;
-            this.boxArrBack.forEach(item => {
-                if (ratioH !== 1) {
-                    item[this.rectPropRewrite.height || 'h'] = Math.round(item[this.rectPropRewrite.height || 'h'] / ratioH);
-                    item[this.rectPropRewrite.top || 't'] = Math.round(item[this.rectPropRewrite.top || 't'] / ratioH);
-                }
-                if (ratioW !== 1) {
-                    item[this.rectPropRewrite.width || 'w'] = Math.round(item[this.rectPropRewrite.width || 'w'] / ratioW);
-                    item[this.rectPropRewrite.left || 'l'] = Math.round(item[this.rectPropRewrite.left || 'l'] / ratioW);
-                }
-            })
-            this.oldBox.width = this.box.width;
-            this.oldBox.height = this.box.height;
-        },
+        // resizeBox() {
+        //     if (!this.oldBox.width) {
+        //         this.oldBox.width = this.oldWidth || this.box.width;
+        //         this.oldBox.height = this.oldHeight || this.box.height;
+        //     }
+        //     this.initBoxSize()
+        //     this.initCtx();
+        //     let ratioW = this.oldBox.width / this.box.width;
+        //     let ratioH = this.oldBox.height / this.box.height;
+        //     this.boxArrBack.forEach(item => {
+        //         if (ratioH !== 1) {
+        //             item[this.rectPropRewrite.height || 'h'] = Math.round(item[this.rectPropRewrite.height || 'h'] / ratioH);
+        //             item[this.rectPropRewrite.top || 't'] = Math.round(item[this.rectPropRewrite.top || 't'] / ratioH);
+        //         }
+        //         if (ratioW !== 1) {
+        //             item[this.rectPropRewrite.width || 'w'] = Math.round(item[this.rectPropRewrite.width || 'w'] / ratioW);
+        //             item[this.rectPropRewrite.left || 'l'] = Math.round(item[this.rectPropRewrite.left || 'l'] / ratioW);
+        //         }
+        //     })
+        //     this.oldBox.width = this.box.width;
+        //     this.oldBox.height = this.box.height;
+        // },
         initCtx() {
             this.$refs.canvas.width = this.box.width;
             this.$refs.canvas.height = this.box.height;
@@ -655,7 +681,7 @@ export default {
             }
             return v
         }
-    },
+    }
 }
 </script>
 

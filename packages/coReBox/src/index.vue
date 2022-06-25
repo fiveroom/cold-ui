@@ -1,14 +1,16 @@
 <template>
     <div
         class="co-re_box-home"
+        ref="coreBox"
         :class="{
             'co-re_box-home-is-move': !!mouseAction,
             'co-re_box-home-check': boxActive,
             'co-re_box-home-active': !lock,
-            'co-re_box-home-animal': !disableAnimal && !mouseAction
+            'co-re_box-home-animal': !disableAnimal && !mouseAction && !useKey && openAnimal
         }"
         tabindex="0"
         :style="{ 'z-index': this.zIndex, 'outline-color': tipsColorIns}"
+        @transitionend="transitionendBox"
     >
         <div class="co-re_box-body" ref="bodyEL">
             <slot></slot>
@@ -39,7 +41,7 @@
 </template>
 
 <script>
-// event : resizing dragging resized check-box
+
 import {uId, numToFixed, verifyColor} from '../../tools';
 import {debounce} from "lodash";
 
@@ -122,6 +124,7 @@ export default {
     },
     data() {
         return {
+            useKey: false,
             openAnimal: false,
             trickArr: [],
             location: {
@@ -152,9 +155,8 @@ export default {
             boxActive: false,
             resizeEndDe: null,
             getParentInfoDe: debounce(this.getParentInfo, 500),
-            reloadDe: debounce(this.reload, 30),
-            moveHand: true,
-            closeAnimal: debounce(() => this.openAnimal = false, 50)
+            reloadDe: debounce(this.reload, 40),
+            moveHand: true
         }
     },
     methods: {
@@ -384,7 +386,6 @@ export default {
             this.setTransform(this.left, this.top);
             this.setHeight();
             this.setWidth();
-            this.closeAnimal();
         },
         setParentSize(size) {
             this.parentDis = {
@@ -405,6 +406,9 @@ export default {
                 event.stopPropagation();
                 this.mouseDownEvent(event, 'move')
             })
+        },
+        transitionendBox(){
+            this.openAnimal = false;
         }
     },
     created() {
@@ -434,6 +438,8 @@ export default {
     },
     beforeDestroy() {
         this.clearEvent();
+        this.reloadDe.cancel();
+        this.getParentInfoDe.cancel();
     },
     computed: {
         maxValue() {
@@ -487,7 +493,6 @@ export default {
         lock: {
             immediate: true,
             handler(v) {
-                console.log('v :>> ', v);
                 if (!v) {
                     this.addEvent()
                 } else {
