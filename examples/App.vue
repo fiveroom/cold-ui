@@ -76,7 +76,7 @@ import {s4, uId} from "../packages";
 
 // import 'cold-ui/lib/cold-ui.css'
 import {coRePage, coReBox} from "../packages";
-import {debounce, throttle} from "lodash";
+import {debounce, throttle} from "lodash-es";
 
 // import { coReBox, coRePage } from "cold-ui";
 

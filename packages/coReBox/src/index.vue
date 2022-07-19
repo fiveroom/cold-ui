@@ -43,7 +43,7 @@
 <script>
 
 import {uId, numToFixed, verifyColor} from '../../tools';
-import {debounce} from "lodash";
+import {debounce} from "lodash-es";
 
 export default {
     name: "coReBox",

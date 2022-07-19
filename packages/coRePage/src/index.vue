@@ -7,10 +7,6 @@
         <div class="co-re_page-body">
             <slot></slot>
         </div>
-<!--        <object class="co-re_page-bgc co-re_page-bgc-resize"-->
-<!--                ref="objectHtml"-->
-<!--                height="100%" width="100%" type="text/html" data="about:blank">-->
-<!--        </object>-->
         <canvas class="co-re_page-bgc co-re_page-bgc-hint" ref="canvas"></canvas>
     </div>
 </template>
@@ -18,7 +14,7 @@
 <script>
 
 import { verifyColor} from "../../tools";
-import {throttle, debounce} from "lodash";
+import {throttle, debounce} from "lodash-es";
 import ResizeObserver from 'resize-observer-polyfill';
 
 export default {
@@ -81,7 +77,10 @@ export default {
     data() {
         let alignDis = new Proxy({'mouse': this.mouseVerifyDis,'keyboard': 1}, {
             get(target, p) {
-                return target[p] ?? 0
+                if(target[p] === undefined || target[p] === null){
+                    return 0
+                }
+                return target[p] || 0
             }
         })
         return {
@@ -577,12 +576,6 @@ export default {
                 this.compIds[i]?.setActive(false)
             })
         },
-        // bindDocEvent() {
-        //     setTimeout(() => {
-        //         this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.resizeBoxDe);
-        //         this.$refs.objectHtml.contentDocument.defaultView.addEventListener('resize', this.setParentSizeToBoxDe);
-        //     }, 500)
-        // },
         clearDocEvent() {
             this.ro && this.ro.disconnect();
         },
@@ -591,35 +584,11 @@ export default {
                 this.compIds[i]?.setParentSize(this.box);
             })
         },
-        // 页面大小变化
-        // resizeBox() {
-        //     if (!this.oldBox.width) {
-        //         this.oldBox.width = this.oldWidth || this.box.width;
-        //         this.oldBox.height = this.oldHeight || this.box.height;
-        //     }
-        //     this.initBoxSize()
-        //     this.initCtx();
-        //     let ratioW = this.oldBox.width / this.box.width;
-        //     let ratioH = this.oldBox.height / this.box.height;
-        //     this.boxArrBack.forEach(item => {
-        //         if (ratioH !== 1) {
-        //             item[this.rectPropRewrite.height || 'h'] = Math.round(item[this.rectPropRewrite.height || 'h'] / ratioH);
-        //             item[this.rectPropRewrite.top || 't'] = Math.round(item[this.rectPropRewrite.top || 't'] / ratioH);
-        //         }
-        //         if (ratioW !== 1) {
-        //             item[this.rectPropRewrite.width || 'w'] = Math.round(item[this.rectPropRewrite.width || 'w'] / ratioW);
-        //             item[this.rectPropRewrite.left || 'l'] = Math.round(item[this.rectPropRewrite.left || 'l'] / ratioW);
-        //         }
-        //     })
-        //     this.oldBox.width = this.box.width;
-        //     this.oldBox.height = this.box.height;
-        // },
         initCtx() {
-            this.$refs.canvas.width = this.box.width;
-            this.$refs.canvas.height = this.box.height;
             const scale = window.devicePixelRatio;
+            this.$refs.canvas.width = Math.floor(scale * this.box.width);
+            this.$refs.canvas.height = Math.floor(scale *this.box.height);
             this.ctx.scale(scale, scale);
-
             this.ctx.font = '16px Microsoft YaHei';
         },
         setCtxColor(){
