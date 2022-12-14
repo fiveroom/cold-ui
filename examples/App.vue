@@ -2,19 +2,12 @@
     <div>
         <button @click="addBox">add</button>
         <button @click="box.lock = !box.lock">set Data</button>
-<!--        <div class="drag">-->
-<!--            <ul>-->
-<!--                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag1</li>-->
-<!--                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag2</li>-->
-<!--                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag3</li>-->
-<!--                <li class="drag-box" @mousemove.prevent @mousedown="checkBox($event)">drag4</li>-->
-<!--            </ul>-->
-<!--        </div>-->
         <div id="app">
             <co-re-page
                 ref="coRePage"
                 :boxArr="boxArr"
                 id-prop-name="id"
+                :allow-scroll="true"
                 :tips-color="tipsColor"
                 :use-stand="true"
                 :rect-prop-rewrite="{
@@ -39,13 +32,12 @@
                     :l.sync="i.left"
                     :t.sync="i.top"
                     :lock="false"
+                    :allow-scroll="true"
                 >
                 </CoReBox>
             </co-re-page>
         </div>
-        <div class="drag-show" :style="{'outline-color': tipsColor}" ref="dragShow">
-
-        </div>
+        <div class="drag-show" :style="{'outline-color': tipsColor}" ref="dragShow"></div>
         <div>
             工具框
 
@@ -56,17 +48,18 @@
             最小间距 <input type="number" v-model="minShowDis">
 
         </div>
-        <CoReBox
-            v-bind.sync="dataTR"
-            :source-ele="'body'"
-            v-if="openTest"
-            :au-to-parent-size="true"
-            move-selector=".app-move"
-            :trickList="['cm']"
-        >
-            <header class="app-move">jajaja </header>
-        </CoReBox>
-        <button @click="openTest = !openTest">打开</button>
+<!--        <CoReBox-->
+<!--            v-bind.sync="dataTR"-->
+<!--            :source-ele="'body'"-->
+<!--            v-if="openTest"-->
+<!--            :au-to-parent-size="true"-->
+<!--            move-selector=".app-move"-->
+<!--            :trickList="['cm']"-->
+<!--        >-->
+<!--            <header class="app-move">jajaja </header>-->
+<!--        </CoReBox>-->
+<!--        <button @click="openTest = !openTest">打开</button>-->
+
     </div>
 </template>
 
@@ -327,4 +320,5 @@ body,html{
 .app-move{
     background-color: #007fd4;
 }
+
 </style>

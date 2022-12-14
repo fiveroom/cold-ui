@@ -109,6 +109,7 @@ export default {
             type: String,
             default: '#007fd4'
         },
+        // 元素放入的位置
         sourceEle: {
             type: [String, HTMLElement],
             default: ''
@@ -118,6 +119,10 @@ export default {
             default: ''
         },
         disableAnimal: {
+            type: Boolean,
+            default: false
+        },
+        allowScroll: {
             type: Boolean,
             default: false
         }
@@ -156,7 +161,9 @@ export default {
             resizeEndDe: null,
             getParentInfoDe: debounce(this.getParentInfo, 500),
             reloadDe: debounce(this.reload, 40),
-            moveHand: true
+            moveHand: true,
+            lastMouse: null,
+            parentEle: null
         }
     },
     methods: {
@@ -164,14 +171,13 @@ export default {
             return !!this.mouseAction ? (this.mouseAction === val ? 'co-re_box-trick--active' : '') : ''
         },
         getParentInfo() {
-            const parent = this.$el.offsetParent;
-            const rect = parent.getBoundingClientRect();
+            const rect = this.parentEle.getBoundingClientRect();
             // 元素在页面上的位置
             this.parentDis = {
-                xV: rect.left + window.scrollX + parent.clientLeft,
-                yV: rect.top + window.scrollY + parent.clientTop,
-                width: parent.clientWidth,
-                height: parent.clientHeight
+                xV: rect.left + window.scrollX + this.parentEle.clientLeft,
+                yV: rect.top + window.scrollY + this.parentEle.clientTop,
+                width: this.parentEle.clientWidth,
+                height: this.parentEle.clientHeight
             }
         },
         boxMove(event) {
@@ -180,18 +186,57 @@ export default {
                 // 鼠标在父元素中的位置
                 if (this.mouseAction === 'move') {
                     this.actionMove(event.pageX - this.sizeData.lDis, event.pageY - this.sizeData.tDis);
+                    this.setParentScroll(event);
                 } else {
-                    if (this.mouseAction.includes('b'))
-                        Object.assign(location, this.actionB(event.pageY - this.sizeData.tDis))
-                    else if (this.mouseAction.includes('t'))
-                        Object.assign(location, this.actionT(event.pageY - this.sizeData.tDis))
-                    if (this.mouseAction.includes('l'))
-                        Object.assign(location, this.actionL(event.pageX - this.sizeData.lDis))
-                    else if (this.mouseAction.includes('r'))
-                        Object.assign(location, this.actionR(event.pageX - this.sizeData.lDis))
-                    this.setResize(location);
+                    const resizeRecord = {};
+                    if (this.mouseAction.includes('b')) {
+                        Object.assign(resizeRecord, this.actionB(event.pageY - this.sizeData.tDis));
+                        this.setParentScrollTop(false);
+                    } else if (this.mouseAction.includes('t')) {
+                        Object.assign(resizeRecord, this.actionT(event.pageY - this.sizeData.tDis));
+                        this.setParentScrollTop(true);
+                    }
+                    if (this.mouseAction.includes('l')) {
+                        Object.assign(resizeRecord, this.actionL(event.pageX - this.sizeData.lDis))
+                    } else if (this.mouseAction.includes('r')) {
+                        Object.assign(resizeRecord, this.actionR(event.pageX - this.sizeData.lDis))
+                    }
+                    this.setResize(resizeRecord);
                 }
                 this.$emit('resizing', this.emitResizeData('mouse'));
+            }
+        },
+        /**
+         *
+         * @param event {MouseEvent}
+         */
+        setParentScroll(event) {
+            if (this.allowScroll) {
+                const dir = event.pageY - this.lastMouse.pageY;
+                if (dir > 0) {
+                    this.setParentScrollTop(false);
+                } else if (dir < 0) {
+                    this.setParentScrollTop(true);
+                }
+                this.lastMouse = event;
+            }
+        },
+        setParentScrollTop(top) {
+            if (this.allowScroll) {
+                const {scrollTop} = this.$el.parentElement;
+                if (top) {
+                    if (this.top < scrollTop) {
+                        this.$el.parentElement.scrollTop = this.top;
+                    } else if (this.top > scrollTop + this.parentDis.height) {
+                        this.$el.parentElement.scrollTop = this.top - this.parentDis.height;
+                    }
+                } else {
+                    if (this.top + this.height > scrollTop + this.parentDis.height) {
+                        this.$el.parentElement.scrollTop = this.top + this.height - this.parentDis.height;
+                    } else if (this.top + this.height < scrollTop) {
+                        this.$el.parentElement.scrollTop = this.top + this.height;
+                    }
+                }
             }
         },
         setResize(location) {
@@ -212,6 +257,8 @@ export default {
             if (this.mouseAction) {
                 this.boxActive = true;
                 this.$emit('check-box', this.ids);
+                this.lastMouse = event;
+                // 记录尺寸和位置大小
                 this.sizeData = {
                     lDis: event.pageX,
                     tDis: event.pageY,
@@ -255,7 +302,6 @@ export default {
                 left: this.left,
                 top: this.top
             }
-            // this.resizeEndDe()
         },
         verifyLeft(needL) {
             if (needL < 0) {
@@ -268,7 +314,7 @@ export default {
         verifyTop(needT) {
             if (needT < 0) {
                 needT = 0;
-            } else if (needT > this.maxValue.maxTop) {
+            } else if (!this.allowScroll && needT > this.maxValue.maxTop) {
                 needT = this.maxValue.maxTop;
             }
             return numToFixed(needT)
@@ -326,7 +372,7 @@ export default {
         },
         actionB(val) {
             let needH = this.sizeData.oldHeight + val;
-            if (needH + this.top > this.parentDis.height) {
+            if (!this.allowScroll && needH + this.top > this.parentDis.height) {
                 needH = this.parentDis.height - this.top;
             } else if (needH < this.minHeight) {
                 needH = this.minHeight;
@@ -345,7 +391,6 @@ export default {
                 this.$emit('resized', this.emitResizeData('mouse'));
                 this.mouseAction = '';
             }
-
         },
         mouseDownOther() {
             this.boxActive = false;
@@ -366,19 +411,18 @@ export default {
             if (this.auToParentSize) {
                 window.removeEventListener('resize', this.getParentInfoDe);
             }
-
         },
         setTransform(left, top) {
-            this.$el.style.transform = `translate(${left}px, ${top}px)`;
+            this.$el.style.setProperty('transform', `translate(${left}px, ${top}px)`);
         },
         setHeight() {
-            this.$el.style.height = this.height + 'px';
+            this.$el.style.setProperty('height', this.height + 'px');
         },
         setWidth() {
-            this.$el.style.width = this.width + 'px';
+            this.$el.style.setProperty('width', this.width + 'px');
         },
         setOpacity() {
-            this.$el.style.opacity = '1';
+            this.$el.style.setProperty("opacity", '1');
         },
         reload() {
             this.openAnimal = true;
@@ -387,17 +431,9 @@ export default {
             this.setHeight();
             this.setWidth();
         },
-        setParentSize(size) {
-            this.parentDis = {
-                xV: size.xV,
-                yV: size.yV,
-                width: size.width,
-                height: size.height
-            }
-        },
-        setMoveEvent(){
+        setMoveEvent() {
             let moveEle;
-            if(this.moveSelector){
+            if (this.moveSelector) {
                 moveEle = this.$refs.bodyEL.querySelector(this.moveSelector.toString());
             }
             this.moveHand = !moveEle;
@@ -405,9 +441,9 @@ export default {
             moveEle.addEventListener('mousedown', event => {
                 event.stopPropagation();
                 this.mouseDownEvent(event, 'move')
-            })
+            });
         },
-        transitionendBox(){
+        transitionendBox() {
             this.openAnimal = false;
         }
     },
@@ -424,15 +460,14 @@ export default {
             let ele = null;
             if (this.sourceEle instanceof HTMLElement) {
                 ele = this.sourceEle;
-            } else {
-                if (Object.prototype.toString.call(this.sourceEle) === "[object String]") {
-                    ele = document.querySelector(this.sourceEle);
-                }
+            } else if (Object.prototype.toString.call(this.sourceEle) === "[object String]") {
+                ele = document.querySelector(this.sourceEle);
             }
-            if(ele){
+            if (ele) {
                 ele.appendChild(this.$el)
             }
         }
+        this.parentEle = this.$el.offsetParent;
         this.setMoveEvent()
         this.getParentInfo();
     },

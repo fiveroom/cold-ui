@@ -5,8 +5,12 @@ import App from './App.vue'
 
 
 import './assets/global.scss'
+import Test from "./components/test";
+import TestChild from "./components/test-child";
 
 
+Vue.component('test', Test)
+Vue.component('test-child', TestChild)
 Vue.config.productionTip = false
 
 // Vue.use(coldUi);

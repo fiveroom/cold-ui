@@ -4,7 +4,7 @@
          @keydown="boxKeyDown($event)"
          @keyup="boxKeyUp($event)"
     >
-        <div class="co-re_page-body">
+        <div class="co-re_page-body" :style="scrollStyle">
             <slot></slot>
         </div>
         <canvas class="co-re_page-bgc co-re_page-bgc-hint" ref="canvas"></canvas>
@@ -13,7 +13,7 @@
 
 <script>
 
-import { verifyColor} from "../../tools";
+import {verifyColor} from "../../tools";
 import {throttle, debounce} from "lodash-es";
 import ResizeObserver from 'resize-observer-polyfill';
 
@@ -41,8 +41,8 @@ export default {
             default: '#007fd4'
         },
         showDis: {
-          type: Boolean,
-          default: true
+            type: Boolean,
+            default: true
         },
         rectPropRewrite: {
             type: Object,
@@ -57,27 +57,19 @@ export default {
             type: Number,
             default: 1
         },
-        oldWidth: {
-            type: Number,
-            default: 0,
-        },
-        oldHeight: {
-            type: Number,
-            default: 0,
-        },
-        autoFirstResize: {
-            default: true,
-            type: Boolean
-        },
         mouseVerifyDis: {
             type: Number,
             default: 3
+        },
+        allowScroll: {
+            type: Boolean,
+            default: false
         }
     },
     data() {
-        let alignDis = new Proxy({'mouse': this.mouseVerifyDis,'keyboard': 1}, {
+        let alignDis = new Proxy({'mouse': this.mouseVerifyDis, 'keyboard': 1}, {
             get(target, p) {
-                if(target[p] === undefined || target[p] === null){
+                if (target[p] === undefined || target[p] === null) {
                     return 0
                 }
                 return target[p] || 0
@@ -119,7 +111,6 @@ export default {
             checkBoxes: new Set(),
             keyDownData: {},
             controlStu: false,
-            setParentSizeToBoxDe: debounce(this.setParentSizeToBox, 500),
             boxArrBack: null,
             clearStandDe: debounce(this.clearStand, 1000),
             ctx: null,
@@ -135,72 +126,61 @@ export default {
             handler() {
                 this.initResizeBox()
             }
-        },
-        oldHeight() {
-            if (this.oldHeight !== this.oldBox.height) {
-                this.oldBox.height = this.oldHeight;
-            }
-        },
-        oldWidth() {
-            if (this.oldWidth !== this.oldBox.width) {
-                this.oldBox.width = this.oldWidth;
-            }
         }
     },
     mounted() {
         // 对页面大小的监听不够灵活
-        // this.initBoxSize()
-        // this.bindDocEvent();
         this.ctx = this.$refs.canvas.getContext('2d');
-        // this.initCtx();
-
-    //    -------
         this.ro = new ResizeObserver((entries) => {
-            const { contentRect } = entries[0];
+            const {contentRect} = entries[0];
             this.resizeDebounce(contentRect);
         });
         this.ro.observe(this.$el);
     },
-
     beforeDestroy() {
         this.clearDocEvent();
-        this.setParentSizeToBoxDe?.cancel()
         this.clearStandDe?.cancel()
         this.resizeDebounce?.cancel()
     },
     created() {
         Object.assign(this.rectProp, this.rectPropRewrite);
-        if(Object.prototype.toString.call(this.toolConfig) === "[object Object]"){
+        if (Object.prototype.toString.call(this.toolConfig) === "[object Object]") {
             Object.assign(this.toolConfigIns, {
                 useKeyControl: true,
                 useStand: true
             }, this.toolConfig)
         }
     },
-
     computed: {
-      canvasBox(){
-          return {
-              l: 0,
-              t: 0,
-              w: this.box.width,
-              h: this.box.height,
-              id: '_canvas_box_'
-          }
-      },
-      tipsColorIns(){
-          return verifyColor(this.tipsColor.toString(), '#007fd4')
-      }
+        canvasBox() {
+            return {
+                l: 0,
+                t: 0,
+                w: this.box.width,
+                h: this.box.height,
+                id: '_canvas_box_'
+            }
+        },
+        tipsColorIns() {
+            return verifyColor(this.tipsColor.toString(), '#007fd4')
+        },
+        scrollStyle(){
+            if(this.allowScroll){
+                return {
+                    overflow: 'hidden auto'
+                }
+            }
+            return {overflow: 'hidden'}
+        }
     },
     methods: {
         /**
          *
          * @param contentRect {DOMRectReadOnly}
          */
-        refreshSize(contentRect){
+        refreshSize(contentRect) {
             this.initBoxSize(contentRect);
             this.initCtx();
-            this.setParentSizeToBox();
         },
         /**\
          *
@@ -213,7 +193,6 @@ export default {
             this.box.centerH = this.box.height / 2;
             this.box.xV = rect.left + window.scrollX + this.$el.clientLeft;
             this.box.yV = rect.top + window.scrollY + this.$el.clientTop;
-            this.emitOldSize()
         },
         initResizeBox() {
             this.boxArrObj = {};
@@ -246,11 +225,10 @@ export default {
                     }
                 })
                 hasKeys.forEach(i => {
-                    if(!newKeys.includes(i)){
+                    if (!newKeys.includes(i)) {
                         Reflect.deleteProperty(this.compIds, i);
                     }
                 })
-                this.setParentSizeToBox()
             })
         },
         getActiveBox({compId}) {
@@ -277,7 +255,7 @@ export default {
             this.checkBoxes.delete(compId);
         },
         boxKeyDown(event) {
-            if(!this.toolConfigIns.useKeyControl) return;
+            if (!this.toolConfigIns.useKeyControl) return;
             this.controlStu = event.ctrlKey;
             if (!this.checkBoxes.size) return;
             const done = this.keyDownEvent[event.code || event.keyCode];
@@ -305,9 +283,8 @@ export default {
             this.keyDownData = {};
         }, 500),
         boxKeyUp(event) {
-            if(!this.toolConfigIns.useKeyControl) return;
+            if (!this.toolConfigIns.useKeyControl) return;
             this.controlStu = event.ctrlKey;
-            // this.clearStandDe();
         },
         setStepVal([add, top]) {
             return [add ? this.keyStep : -this.keyStep, top]
@@ -315,17 +292,13 @@ export default {
         resizeStop() {
             this.clearStand()
         },
-        emitOldSize: debounce(function () {
-            this.$emit('update:oldWidth', this.box.width);
-            this.$emit('update:oldHeight', this.box.height);
-        }, 200),
         resizeEvent: throttle(function ({rect, boxId, compId, type, eventType}) {
             let diffData = this.alignBoxTwo(rect, boxId, eventType);
             let alignArr = this.setAlignBoxTips(diffData, {rect, boxId, compId, type});
             this.ctx.clearRect(0, 0, this.box.width, this.box.height);
             this.setCtxColor();
             alignArr.forEach(item => this.drawLine(item, 'align'));
-            if(this.showDis){
+            if (this.showDis) {
                 let numberArr = this.setAlignNumTips(diffData, rect);
                 numberArr.forEach(item => this.drawLine(item, 'val'));
             }
@@ -335,7 +308,6 @@ export default {
         clearStand() {
             this.ctx?.clearRect(0, 0, this.box.width, this.box.height);
         },
-
         alignBoxTwo(newRect, moduleId, type) {
             const {l, h, w, t} = newRect;
             const aX = l + w / 2;
@@ -383,10 +355,10 @@ export default {
                     disY: Math.abs(Math.abs(aY - bY) - h / 2 - iH / 2),
                     obj: item
                 }
-                if(alignL.length){
+                if (alignL.length) {
                     diffLArr.push({alignL, ...disBox})
                 }
-                if(alignT.length){
+                if (alignT.length) {
                     diffTArr.push({alignT, ...disBox})
                 }
             })
@@ -395,10 +367,9 @@ export default {
                 diffTObj: diffTArr.sort((a, b) => a.disX - b.disX)[0]
             }
         },
-
         setAlignBoxTips({diffLObj, diffTObj}, {rect, compId, type}) {
             let alignArr = [];
-            if(diffLObj){
+            if (diffLObj) {
                 const obj = diffLObj.obj;
                 diffLObj.alignL.forEach(item => {
                     if (type === 'move') {
@@ -423,7 +394,7 @@ export default {
                     alignArr.push([[xPoint, yPoint0], [xPoint, yPoint1]])
                 })
             }
-            if(diffTObj){
+            if (diffTObj) {
                 const obj = diffTObj.obj;
                 diffTObj.alignT.forEach(item => {
                     if (type === 'move') {
@@ -450,11 +421,11 @@ export default {
             }
             return alignArr
         },
-        setAlignNumTips({diffLObj, diffTObj}, rect){
+        setAlignNumTips({diffLObj, diffTObj}, rect) {
             let numTipsArr = [];
-            if(diffLObj){
+            if (diffLObj) {
                 let obj = diffLObj.obj;
-                let aB =  Math.round(rect.t + rect.h);
+                let aB = Math.round(rect.t + rect.h);
                 let bB = Math.round(obj.t + obj.h);
                 let aR = rect.l + rect.w;
                 let bR = obj.l + obj.w;
@@ -462,11 +433,11 @@ export default {
                 let aX = rect.l + rect.w / 2;
                 let bY = obj.t + obj.h / 2;
                 let bX = obj.l + obj.w / 2;
-                let disY = Math.round( Math.abs(rect.t + rect.h / 2 - obj.t - obj.h /2) - obj.h / 2 - rect.h / 2);
-                let disX =  Math.round( Math.abs(rect.l + rect.w / 2 - obj.l - obj.w /2) - obj.w / 2 - rect.w / 2);
+                let disY = Math.round(Math.abs(rect.t + rect.h / 2 - obj.t - obj.h / 2) - obj.h / 2 - rect.h / 2);
+                let disX = Math.round(Math.abs(rect.l + rect.w / 2 - obj.l - obj.w / 2) - obj.w / 2 - rect.w / 2);
                 let numXPoint;
-                if(disX < 0){
-                    if(diffLObj.alignL[0].aProp !== 'lc'){
+                if (disX < 0) {
+                    if (diffLObj.alignL[0].aProp !== 'lc') {
                         numXPoint = Math.floor(rect.l >= obj.l ? (rect.l + Math.min(aR, bR)) / 2 : (rect.l + rect.w + obj.l) / 2);
                     } else {
                         numXPoint = Math.floor(rect.l + rect.w / 2);
@@ -474,18 +445,18 @@ export default {
                 } else {
                     numXPoint = Math.floor(aX - bX > 0 ? rect.l : rect.l + rect.w);
                 }
-                if(disY < 0){
+                if (disY < 0) {
                     numTipsArr.push(
-                        [[numXPoint, rect.t],[numXPoint, obj.t], Math.abs(rect.t - obj.t)],
-                        [[numXPoint, aB],[numXPoint, bB], Math.abs(aB - bB)]
+                        [[numXPoint, rect.t], [numXPoint, obj.t], Math.abs(rect.t - obj.t)],
+                        [[numXPoint, aB], [numXPoint, bB], Math.abs(aB - bB)]
                     )
-                } else if(aY - bY > 0){
+                } else if (aY - bY > 0) {
                     numTipsArr.push([[numXPoint, rect.t], [numXPoint, bB], Math.abs(rect.t - bB)])
                 } else {
                     numTipsArr.push([[numXPoint, aB], [numXPoint, obj.t], Math.abs(aB - obj.t)])
                 }
             }
-            if(diffTObj){
+            if (diffTObj) {
                 let obj = diffTObj.obj;
                 let bR = obj.l + obj.w;
                 let bB = obj.t + obj.h;
@@ -495,24 +466,24 @@ export default {
                 let aX = rect.l + rect.w / 2;
                 let bY = obj.t + obj.h / 2;
                 let bX = obj.l + obj.w / 2;
-                let disY = Math.round( Math.abs(rect.t + rect.h / 2 - obj.t - obj.h /2) - obj.h / 2 - rect.h / 2);
-                let disX =  Math.round( Math.abs(rect.l + rect.w / 2 - obj.l - obj.w /2) - obj.w / 2 - rect.w / 2);
+                let disY = Math.round(Math.abs(rect.t + rect.h / 2 - obj.t - obj.h / 2) - obj.h / 2 - rect.h / 2);
+                let disX = Math.round(Math.abs(rect.l + rect.w / 2 - obj.l - obj.w / 2) - obj.w / 2 - rect.w / 2);
                 let numYPoint;
-                if(disY < 0){
-                    if(diffTObj.alignT[0].aProp !== 'tc'){
+                if (disY < 0) {
+                    if (diffTObj.alignT[0].aProp !== 'tc') {
                         numYPoint = Math.floor(rect.t >= obj.t ? (rect.t + Math.min(aB, bB)) / 2 : (rect.t + rect.h + obj.t) / 2);
                     } else {
                         numYPoint = Math.floor(rect.t + rect.h / 2);
                     }
-                } else  {
+                } else {
                     numYPoint = Math.floor(aY - bY > 0 ? rect.t : rect.t + rect.h);
                 }
-                if(disX < 0){
+                if (disX < 0) {
                     numTipsArr.push(
-                        [[rect.l, numYPoint],[obj.l, numYPoint], Math.abs(rect.l - obj.l)],
-                        [[aR, numYPoint],[bR, numYPoint], Math.abs(aR - bR)]
+                        [[rect.l, numYPoint], [obj.l, numYPoint], Math.abs(rect.l - obj.l)],
+                        [[aR, numYPoint], [bR, numYPoint], Math.abs(aR - bR)]
                     )
-                } else if(aX - bX > 0){
+                } else if (aX - bX > 0) {
                     numTipsArr.push([[rect.l, numYPoint], [bR, numYPoint], Math.abs(rect.l - bR)])
                 } else {
                     numTipsArr.push([[aR, numYPoint], [obj.l, numYPoint], Math.abs(aR - obj.l)])
@@ -520,7 +491,6 @@ export default {
             }
             return numTipsArr
         },
-
         proxyRect(target) {
             if (!target) return
             let v = this;
@@ -579,19 +549,15 @@ export default {
         clearDocEvent() {
             this.ro && this.ro.disconnect();
         },
-        setParentSizeToBox() {
-            Object.keys(this.compIds).forEach(i => {
-                this.compIds[i]?.setParentSize(this.box);
-            })
-        },
+        // ctx
         initCtx() {
             const scale = window.devicePixelRatio;
             this.$refs.canvas.width = Math.floor(scale * this.box.width);
-            this.$refs.canvas.height = Math.floor(scale *this.box.height);
+            this.$refs.canvas.height = Math.floor(scale * this.box.height);
             this.ctx.scale(scale, scale);
             this.ctx.font = '16px Microsoft YaHei';
         },
-        setCtxColor(){
+        setCtxColor() {
             this.ctx.strokeStyle = this.tipsColorIns;
             this.ctx.fillStyle = this.tipsColorIns;
         },

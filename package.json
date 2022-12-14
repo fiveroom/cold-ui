@@ -8,9 +8,9 @@
     "homepage": "https://github.com/fiveroom/cold-ui",
     "license": "MIT",
     "scripts": {
-        "start": "vue-cli-service serve",
+        "start": "vue-cli-service serve --port=3333",
         "build": "vue-cli-service build",
-        "lib": "vue-cli-service build --target lib --name cold-ui --dest lib packages/index.js"
+        "lib": "vue-cli-service build --target lib --mode production --name cold-ui --dest lib packages/index.js "
     },
     "dependencies": {
         "core-js": "^3.6.5",
