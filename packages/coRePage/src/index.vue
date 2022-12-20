@@ -3,11 +3,13 @@
          tabindex="0"
          @keydown="boxKeyDown($event)"
          @keyup="boxKeyUp($event)"
+         @mousedown="mouseDownCall"
     >
-        <div class="co-re_page-body" :style="scrollStyle">
+        <div class="co-re_page-body" ref="body" :style="scrollStyle">
             <slot></slot>
         </div>
         <canvas class="co-re_page-bgc co-re_page-bgc-hint" ref="canvas"></canvas>
+        <div class="co-re_page-group" ref="group"></div>
     </div>
 </template>
 
@@ -15,7 +17,6 @@
 
 import {verifyColor} from "../../tools";
 import {throttle, debounce} from "lodash-es";
-import ResizeObserver from 'resize-observer-polyfill';
 
 export default {
     name: "coRePage",
@@ -114,10 +115,13 @@ export default {
             boxArrBack: null,
             clearStandDe: debounce(this.clearStand, 1000),
             ctx: null,
-            alignLine: [],
             toolConfigIns: {},
             resizeDebounce: debounce(this.refreshSize, 300),
-            ro: null
+            ro: null,
+            boxRect: {width: 0, height: 0, left: 0, top: 0},
+            mouseDownStatus: false,
+            startMouseEvent: null,
+            endMouseEvent: null
         }
     },
     watch: {
@@ -131,11 +135,12 @@ export default {
     mounted() {
         // 对页面大小的监听不够灵活
         this.ctx = this.$refs.canvas.getContext('2d');
-        this.ro = new ResizeObserver((entries) => {
-            const {contentRect} = entries[0];
-            this.resizeDebounce(contentRect);
+        this.ro = new ResizeObserver(() => {
+            this.resizeDebounce();
         });
         this.ro.observe(this.$el);
+        console.log(this.$el.getBoundingClientRect());
+        console.log(this.$el, ResizeObserver);
     },
     beforeDestroy() {
         this.clearDocEvent();
@@ -148,7 +153,7 @@ export default {
             Object.assign(this.toolConfigIns, {
                 useKeyControl: true,
                 useStand: true
-            }, this.toolConfig)
+            }, this.toolConfig);
         }
     },
     computed: {
@@ -164,8 +169,8 @@ export default {
         tipsColorIns() {
             return verifyColor(this.tipsColor.toString(), '#007fd4')
         },
-        scrollStyle(){
-            if(this.allowScroll){
+        scrollStyle() {
+            if (this.allowScroll) {
                 return {
                     overflow: 'hidden auto'
                 }
@@ -174,21 +179,18 @@ export default {
         }
     },
     methods: {
-        /**
-         *
-         * @param contentRect {DOMRectReadOnly}
-         */
-        refreshSize(contentRect) {
-            this.initBoxSize(contentRect);
+        refreshSize() {
+            this.boxRect = this.$el.getBoundingClientRect();
+            this.initBoxSize(this.boxRect);
             this.initCtx();
         },
         /**\
          *
-         * @param rect {DOMRectReadOnly}
+         * @param rect {{left: number, width: number, height: number, top: number}}
          */
         initBoxSize(rect) {
-            this.box.height = this.$el.clientHeight;
-            this.box.width = this.$el.clientWidth;
+            this.box.height = rect.height;
+            this.box.width = rect.width;
             this.box.centerW = this.box.width / 2;
             this.box.centerH = this.box.height / 2;
             this.box.xV = rect.left + window.scrollX + this.$el.clientLeft;
@@ -219,8 +221,8 @@ export default {
                             comp.$on('resized', this.resizeStop.bind(this));
                         }
                         if (this.toolConfigIns.useKeyControl) {
-                            comp.$on('check-box', this.getActiveBox.bind(this));
-                            comp.$on('uncheck-box', this.getUnActiveBox.bind(this));
+                            comp.$on('check-box', this.activeBoxCall.bind(this));
+                            comp.$on('uncheck-box', this.unActiveBoxCall.bind(this));
                         }
                     }
                 })
@@ -231,7 +233,7 @@ export default {
                 })
             })
         },
-        getActiveBox({compId}) {
+        activeBoxCall({compId}) {
             if (this.controlStu) {
                 let stu = this.checkBoxes.has(compId);
                 if (this.checkBoxes.has(compId)) {
@@ -249,9 +251,8 @@ export default {
                 this.checkBoxes.add(compId);
                 this.compIds[compId].setActive(true)
             }
-
         },
-        getUnActiveBox({compId}) {
+        unActiveBoxCall({compId}) {
             this.checkBoxes.delete(compId);
         },
         boxKeyDown(event) {
@@ -615,6 +616,61 @@ export default {
                 return val - .5
             }
             return v
+        },
+        /**
+         *
+         * @param $event {MouseEvent}
+         */
+        mouseDownCall($event) {
+            if ($event.button === 0) {
+                this.mouseDownStatus = true;
+                this.startMouseEvent = $event;
+                window.addEventListener('mousemove', this.mouseMoveCall)
+                window.addEventListener('mouseup', this.mouseupCall)
+            }
+        },
+        /**
+         *
+         * @param $event {MouseEvent}
+         */
+        mouseMoveCall($event) {
+            $event.preventDefault();
+            let width = $event.pageX - this.startMouseEvent.pageX;
+            let height = $event.pageY - this.startMouseEvent.pageY;
+            let left = this.startMouseEvent.pageX - this.boxRect.left;
+            let top = this.startMouseEvent.pageY - this.boxRect.top;
+            if (width < 0) {
+                left += width;
+            }
+            if (height < 0) {
+                top += height;
+            }
+            this.endMouseEvent = $event;
+            this.$refs.group.setAttribute(
+                'style',
+                `
+                    display: block;
+                    transform: translate(${left}px, ${top}px);
+                    width: ${Math.abs(width)}px;
+                    height: ${Math.abs(height)}px;
+                    border-color: ${this.tipsColorIns}
+                `
+            )
+        },
+        mouseupCall() {
+            this.mouseDownStatus = false;
+            this.startMouseEvent = null;
+            this.$refs.group.setAttribute('style', '');
+            window.removeEventListener('mousemove', this.mouseMoveCall);
+            window.removeEventListener('mouseup', this.mouseupCall);
+            this.judgeGroupBox();
+        },
+        judgeGroupBox(){
+            const extendY = this.allowScroll ? this.$refs.body.scrollTop : 0;
+            let startX = this.startMouseEvent.pageX - this.boxRect.left,
+                startY = this.startMouseEvent.pageY - this.boxRect.top + extendY,
+                endX = this.endMouseEvent.pageX - this.boxRect.left,
+                enxY = this.endMouseEvent.pageY - this.boxRect.top + extendY;
         }
     }
 }
@@ -684,6 +740,20 @@ $name: 're_page';
             z-index: 3;
             pointer-events: none;
         }
+    }
+
+    // 组的选择
+    &-group {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 20px;
+        display: none;
+        height: 20px;
+        z-index: 3;
+        border: 1px dashed transparent;
+        pointer-events: none;
+        transform-origin: left top;
     }
 }
 </style>

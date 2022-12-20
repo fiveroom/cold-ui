@@ -58,7 +58,7 @@
 <!--        >-->
 <!--            <header class="app-move">jajaja </header>-->
 <!--        </CoReBox>-->
-<!--        <button @click="openTest = !openTest">打开</button>-->
+        <button @click="openTest = !openTest">打开</button>
 
     </div>
 </template>
@@ -157,7 +157,7 @@ export default {
         setActiveDe: debounce( function (source){
             console.log('source :>> ', source.ids);
             this.$refs.coRePage.$el.focus();
-            this.$refs.coRePage.getActiveBox(source.ids);
+            this.$refs.coRePage.activeBoxCall(source.ids);
         }, 500)
     },
 

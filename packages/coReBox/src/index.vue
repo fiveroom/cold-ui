@@ -21,7 +21,8 @@
                 height: moveBoxHeight
             }"
             v-show="!lock"
-            v-if="moveHand"
+            @mousedown="mouseMoveCall($event)"
+            v-if="!moveSelector"
             ref="boxMove"
         ></i>
         <template v-if="!lock">
@@ -44,6 +45,8 @@
 
 import {uId, numToFixed, verifyColor} from '../../tools';
 import {debounce} from "lodash-es";
+
+const MOVE_HANDLER = ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc"];
 
 export default {
     name: "coReBox",
@@ -89,7 +92,6 @@ export default {
             type: Object,
             default: null
         },
-        auToParentSize: false,
         lock: {
             type: Boolean,
             default: false
@@ -125,13 +127,13 @@ export default {
         allowScroll: {
             type: Boolean,
             default: false
-        }
+        },
+        parentElement: [String, HTMLElement]
     },
     data() {
         return {
             useKey: false,
             openAnimal: false,
-            trickArr: [],
             location: {
                 translateX: 0,
                 translateY: 0
@@ -144,7 +146,7 @@ export default {
                 oldHeight: 0,
                 oldWidth: 0
             },
-            parentDis: {
+            parentBoxSize: {
                 xV: 0,
                 yV: 0,
                 width: 0,
@@ -158,30 +160,19 @@ export default {
             height: 50,
             compId: uId(),
             boxActive: false,
-            resizeEndDe: null,
-            getParentInfoDe: debounce(this.getParentInfo, 500),
             reloadDe: debounce(this.reload, 40),
-            moveHand: true,
             lastMouse: null,
-            parentEle: null
+            parentEle: null,
+            inCoRePage: false,
+            resizeObserver: null
         }
     },
     methods: {
         trickClass(val) {
             return !!this.mouseAction ? (this.mouseAction === val ? 'co-re_box-trick--active' : '') : ''
         },
-        getParentInfo() {
-            const rect = this.parentEle.getBoundingClientRect();
-            // 元素在页面上的位置
-            this.parentDis = {
-                xV: rect.left + window.scrollX + this.parentEle.clientLeft,
-                yV: rect.top + window.scrollY + this.parentEle.clientTop,
-                width: this.parentEle.clientWidth,
-                height: this.parentEle.clientHeight
-            }
-        },
         boxMove(event) {
-            if (this.mouseAction) {
+            if (this.mouseAction && !this.lock) {
                 event.preventDefault();
                 // 鼠标在父元素中的位置
                 if (this.mouseAction === 'move') {
@@ -223,7 +214,7 @@ export default {
         },
         setParentScrollTop(top) {
             if (this.allowScroll) {
-                const {scrollTop} = this.$el.parentElement;
+                const {scrollTop} = this.parentEle;
                 if (top) {
                     if (this.top < scrollTop) {
                         this.$el.parentElement.scrollTop = this.top;
@@ -241,7 +232,7 @@ export default {
         },
         setResize(location) {
             if (Reflect.has(location, 'top') || Reflect.has(location, 'left')) {
-                this.setTransform(this.left, this.top)
+                this.setTransform()
             }
             if (Reflect.has(location, 'width')) {
                 this.setWidth()
@@ -251,12 +242,11 @@ export default {
             }
         },
         mouseDownEvent(event, type) {
-            if (this.lock) return;
-            if (event.button !== 0) return
+            if (this.lock || event.button !== 0) return
             this.mouseAction = type;
             if (this.mouseAction) {
-                this.boxActive = true;
-                this.$emit('check-box', this.ids);
+                event.stopPropagation();
+                this.setBoxActive();
                 this.lastMouse = event;
                 // 记录尺寸和位置大小
                 this.sizeData = {
@@ -266,7 +256,9 @@ export default {
                     oldTop: this.top,
                     oldHeight: this.height,
                     oldWidth: this.width,
-                }
+                };
+                window.addEventListener('mousemove', this.boxMove);
+                window.addEventListener('mouseup', this.mouseCancel);
             }
         },
         emitResizeData(eventType) {
@@ -286,7 +278,7 @@ export default {
         actionMove(left, top) {
             this.left = this.verifyLeft(left + this.sizeData.oldLeft);
             this.top = this.verifyTop(top + this.sizeData.oldTop);
-            this.setTransform(this.left, this.top);
+            this.setTransform();
         },
         actionMoveByStep(step, topStu) {
             if (this.lock) return;
@@ -295,7 +287,7 @@ export default {
             } else {
                 this.left = this.verifyLeft(this.left + step);
             }
-            this.setTransform(this.left, this.top);
+            this.setTransform();
             this.$emit('resizing', this.emitResizeData('keyboard'));
             return {
                 boxId: this.boxId,
@@ -383,37 +375,37 @@ export default {
             }
         },
         mouseCancel() {
-            if (this.mouseAction) {
+            if (this.mouseAction && !this.lock) {
+                this.mouseAction = '';
                 this.$emit('update:w', this.width);
                 this.$emit('update:h', this.height);
                 this.$emit('update:l', this.left);
                 this.$emit('update:t', this.top);
                 this.$emit('resized', this.emitResizeData('mouse'));
-                this.mouseAction = '';
+                window.removeEventListener('mousemove', this.boxMove);
+                window.removeEventListener('mouseup', this.mouseCancel);
             }
         },
+        // 1、盒子锁定立即执行。2、监听document点击
         mouseDownOther() {
-            this.boxActive = false;
-            this.$emit('uncheck-box', this.ids)
-        },
-        addEvent() {
-            document.documentElement.addEventListener('mousemove', this.boxMove);
-            document.documentElement.addEventListener('mousedown', this.mouseDownOther);
-            document.documentElement.addEventListener('mouseup', this.mouseCancel);
-            if (this.auToParentSize) {
-                window.addEventListener('resize', this.getParentInfoDe);
+            if (!this.lock) {
+                this.setBoxUnActive();
             }
         },
-        clearEvent() {
-            document.documentElement.removeEventListener('mousemove', this.boxMove);
-            document.documentElement.removeEventListener('mousedown', this.mouseDownOther);
-            document.documentElement.removeEventListener('mouseup', this.mouseCancel);
-            if (this.auToParentSize) {
-                window.removeEventListener('resize', this.getParentInfoDe);
+        setBoxUnActive() {
+            if (this.boxActive) {
+                this.boxActive = false;
+                this.$emit('uncheck-box', this.ids)
             }
         },
-        setTransform(left, top) {
-            this.$el.style.setProperty('transform', `translate(${left}px, ${top}px)`);
+        setBoxActive() {
+            if (!this.boxActive) {
+                this.boxActive = true;
+                this.$emit('check-box', this.ids);
+            }
+        },
+        setTransform() {
+            this.$el.style.setProperty('transform', `translate(${this.left}px, ${this.top}px)`);
         },
         setHeight() {
             this.$el.style.setProperty('height', this.height + 'px');
@@ -427,54 +419,81 @@ export default {
         reload() {
             this.openAnimal = true;
             this.setOpacity();
-            this.setTransform(this.left, this.top);
+            this.setTransform();
             this.setHeight();
             this.setWidth();
         },
         setMoveEvent() {
-            let moveEle;
             if (this.moveSelector) {
-                moveEle = this.$refs.bodyEL.querySelector(this.moveSelector.toString());
+                const element = this.$refs.bodyEL.querySelector(this.moveSelector);
+                if (element) {
+                    element.addEventListener('mousedown', event => this.mouseMoveCall(event));
+                }
             }
-            this.moveHand = !moveEle;
-            moveEle = moveEle || this.$refs.boxMove;
-            moveEle.addEventListener('mousedown', event => {
+        },
+        mouseMoveCall(event) {
+            if (this.moveHand) {
                 event.stopPropagation();
                 this.mouseDownEvent(event, 'move')
-            });
+            }
         },
         transitionendBox() {
             this.openAnimal = false;
+        },
+        setParentElement() {
+            if (this.$parent && this.$parent.$options && this.$parent.$options.name === 'coRePage') {
+                this.parentEle = this.$parent.$el;
+                this.inCoRePage = true;
+            } else if (Object.prototype.toString.call(this.parentElement) === '[object String]') {
+                this.parentEle = document.querySelector(this.parentElement);
+            } else if (this.parentElement instanceof HTMLElement) {
+                this.parentEle = this.parentElement;
+            } else {
+                this.parentEle = this.$el.offsetParent;
+            }
+        },
+        injectSourceElement() {
+            if (this.sourceEle && !this.inCoRePage) {
+                let ele = null;
+                if (Object.prototype.toString.call(this.sourceEle) === "[object String]") {
+                    ele = document.querySelector(this.sourceEle);
+                } else if (this.sourceEle instanceof HTMLElement) {
+                    ele = this.sourceEle;
+                }
+                if (ele) {
+                    ele.appendChild(this.$el)
+                    this.parentEle = ele;
+                }
+            }
+        },
+        addEvent() {
+            window.addEventListener('mousedown', this.mouseDownOther);
+            this.setParentSizeListen();
+        },
+        clearEvent() {
+            window.removeEventListener('mousedown', this.mouseDownOther);
+            this.resizeObserver && this.resizeObserver.disconnect()
+        },
+        setParentSizeListen() {
+            if (!this.inCoRePage) {
+                this.resizeObserver = new ResizeObserver((entries) => {
+                    this.parentBoxSize = entries[0].contentRect
+                })
+                this.resizeObserver.observe(this.parentEle);
+            }
         }
     },
     created() {
-        this.resizeEndDe = debounce(() => this.$emit('resized', this.emitResizeData('init')), 500);
-        if (Array.isArray(this.trickList)) {
-            let a = ["tr", "tc", "tl", "br", "bl", "bc", "lc", "rc"];
-            this.trickArr = this.trickList.filter(i => a.includes(i));
-            this.moveHand = this.trickList.includes('cm');
-        }
     },
     mounted() {
-        if (this.sourceEle) {
-            let ele = null;
-            if (this.sourceEle instanceof HTMLElement) {
-                ele = this.sourceEle;
-            } else if (Object.prototype.toString.call(this.sourceEle) === "[object String]") {
-                ele = document.querySelector(this.sourceEle);
-            }
-            if (ele) {
-                ele.appendChild(this.$el)
-            }
-        }
-        this.parentEle = this.$el.offsetParent;
+        this.setParentElement();
+        this.injectSourceElement();
         this.setMoveEvent()
-        this.getParentInfo();
+        this.addEvent();
     },
     beforeDestroy() {
         this.clearEvent();
         this.reloadDe.cancel();
-        this.getParentInfoDe.cancel();
     },
     computed: {
         maxValue() {
@@ -494,6 +513,18 @@ export default {
         },
         tipsColorIns() {
             return verifyColor(this.tipsColor.toString(), '#007fd4')
+        },
+        parentDis() {
+            if (this.inCoRePage) {
+                return this.$parent.boxRect
+            }
+            return this.parentBoxSize
+        },
+        moveHand() {
+            return this.trickList.includes('cm')
+        },
+        trickArr() {
+            return this.trickList.filter(i => MOVE_HANDLER.includes(i));
         }
     },
     watch: {
@@ -528,11 +559,8 @@ export default {
         lock: {
             immediate: true,
             handler(v) {
-                if (!v) {
-                    this.addEvent()
-                } else {
-                    this.mouseDownOther();
-                    this.clearEvent()
+                if (v) {
+                    this.setBoxUnActive();
                 }
             }
         }
