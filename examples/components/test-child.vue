@@ -1,6 +1,6 @@
 <template>
     <div>
-        {{ propName }}
+       test-two {{ propName }}
     </div>
 </template>
 

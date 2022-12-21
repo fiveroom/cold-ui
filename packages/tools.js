@@ -19,8 +19,14 @@ export function getMiDiff(arrData, tar, hint){
     return {val: arr[0], hint, diffV: Math.abs(tar - arr[0])}
 }
 
+/**
+ * 验证CSS颜色
+ * @param val {string} 需要验证
+ * @param defVal {string} 验证失败应使用的值
+ * @return {string} 颜色
+ */
 export function verifyColor(val, defVal){
-    if(/^(#[0-9a-f]{6}|#[0-9a-f]{3}|rgb\([0-255]{1,3},[0-255]{1,3},[0-255]{1,3}\))$/i.test(val.toString())){
+    if(/^(#[0-9a-f]{6}|#[0-9a-f]{3}|rgb\([0-5]{1,3},[0-5]{1,3},[0-5]{1,3}\))$/i.test(val.toString())){
         return val
     }
     return defVal

@@ -2,11 +2,13 @@
     <div>
         <button @click="addBox">add</button>
         <button @click="box.lock = !box.lock">set Data</button>
+        <button @click="groupBox($event)" >合并</button>
         <div id="app">
             <co-re-page
                 ref="coRePage"
                 :boxArr="boxArr"
                 id-prop-name="id"
+                @groupBind="groupBind($event)"
                 :allow-scroll="true"
                 :tips-color="tipsColor"
                 :use-stand="true"
@@ -16,15 +18,13 @@
                     top: 'top',
                     left: 'left'
                 }"
-                :old-height="oldHeight"
-                :old-width="oldWidth"
                 :show-dis="openDisStu"
                 :min-show-dis="minShowDis"
             >
                 <CoReBox
                     :ref="`CoReBox${ind}`"
                     v-for="(i, ind) in boxArr"
-                    :key="ind"
+                    :key="i.id"
                     :tips-color="tipsColor"
                     :boxId="i.id"
                     :w.sync="i.width"
@@ -34,6 +34,7 @@
                     :lock="false"
                     :allow-scroll="true"
                 >
+                    <dynamic-component :obj="i"></dynamic-component>
                 </CoReBox>
             </co-re-page>
         </div>
@@ -48,16 +49,16 @@
             最小间距 <input type="number" v-model="minShowDis">
 
         </div>
-<!--        <CoReBox-->
-<!--            v-bind.sync="dataTR"-->
-<!--            :source-ele="'body'"-->
-<!--            v-if="openTest"-->
-<!--            :au-to-parent-size="true"-->
-<!--            move-selector=".app-move"-->
-<!--            :trickList="['cm']"-->
-<!--        >-->
-<!--            <header class="app-move">jajaja </header>-->
-<!--        </CoReBox>-->
+        <!--        <CoReBox-->
+        <!--            v-bind.sync="dataTR"-->
+        <!--            :source-ele="'body'"-->
+        <!--            v-if="openTest"-->
+        <!--            :au-to-parent-size="true"-->
+        <!--            move-selector=".app-move"-->
+        <!--            :trickList="['cm']"-->
+        <!--        >-->
+        <!--            <header class="app-move">jajaja </header>-->
+        <!--        </CoReBox>-->
         <button @click="openTest = !openTest">打开</button>
 
     </div>
@@ -70,12 +71,14 @@ import {s4, uId} from "../packages";
 // import 'cold-ui/lib/cold-ui.css'
 import {coRePage, coReBox} from "../packages";
 import {debounce, throttle} from "lodash-es";
+import DynamicComponent from "./components/dynamic-component.vue";
 
 // import { coReBox, coRePage } from "cold-ui";
 
 export default {
     name: 'App',
     components: {
+        DynamicComponent,
         HelloWorld,
         CoReBox: coReBox,
         CoRePage: coRePage
@@ -85,7 +88,7 @@ export default {
             openTest: false,
             boxArr: [],
             minShowDis: 10,
-            openDisStu: true    ,
+            openDisStu: true,
             dataT: {
                 w: 100,
                 h: 100,
@@ -123,19 +126,25 @@ export default {
                     {日期: "1/5", 访问用户: 3792, 下单用户: 3492, 下单率: 0.323},
                     {日期: "1/6", 访问用户: 4593, 下单用户: 4293, 下单率: 0.78}
                 ]
-            }
+            },
+            boxName: ['one', 'two', 'group'],
+            groupIds: []
         }
     },
     methods: {
+        groupBind($event){
+            console.log($event);
+            this.groupIds = $event;
+        },
         addBox() {
             this.boxArr.push({
-                    w: 100,
-                    h: 100,
-                    l: 0,
-                    t: 0,
-                    id: uId()
-                }
-            )
+                w: 100,
+                h: 100,
+                l: 0,
+                t: 0,
+                id: uId(),
+                name: 'box'
+            })
         },
         changeColor(event) {
             console.log('e :>> ', event);
@@ -154,30 +163,58 @@ export default {
             this.$refs.dragShow.style.display = 'block';
             this.$refs.dragShow.style.transform = `translate(${event.pageX - 100}px, ${event.pageY - 100}px)`;
         },
-        setActiveDe: debounce( function (source){
+        setActiveDe: debounce(function (source) {
             console.log('source :>> ', source.ids);
             this.$refs.coRePage.$el.focus();
             this.$refs.coRePage.activeBoxCall(source.ids);
-        }, 500)
+        }, 500),
+        groupBox($event) {
+            $event.stopPropagation();
+            console.log(this.groupIds);
+            if(this.groupIds.length > 1){
+                const groupBoxes = [], oldBoxes = [];
+                this.boxArr.forEach(i => {
+                    if (this.groupIds.includes(i.id)) {
+                        groupBoxes.push(i)
+                    } else {
+                        oldBoxes.push(i)
+                    }
+                });
+                let newL = Infinity, newR = -Infinity, newT = Infinity, newB = -Infinity;
+                groupBoxes.forEach(i => {
+                    const {width: w, height: h, left: l, top: t} = i;
+                    newL = Math.min(l, newL);
+                    newT = Math.min(t, newT);
+                    newR = Math.max(l + w, newR);
+                    newB = Math.max(t + h, newB);
+                });
+                const box = {
+                    left: newL,
+                    top: newT,
+                    width: newR - newL,
+                    height: newB - newT,
+                    name: 'group',
+                    id: uId(),
+                    children: groupBoxes,
+                    lock: false
+                };
+                this.boxArr = [...oldBoxes, box];
+            }
+        }
     },
 
     created() {
-        this.boxArr = Array.from({length: 2}).map((i, ind) => ({
+        this.boxArr = Array.from({length: 3}).map((i, ind) => ({
             width: 200,
             height: 200,
             left: Math.round(Math.random() * 1000),
             top: Math.round(Math.random() * 300),
             id: 'box' + ind,
-            lock: false
+            lock: false,
+            name: this.boxName[ind % 3]
         }));
         this.oldWidth = 1400;
         this.oldHeight = 600;
-        setTimeout(() => {
-            this.boxArr.forEach((item) => {
-                item.left += 100;
-                item.top += 100;
-            })
-        }, 2000)
     },
     mounted() {
         // document.documentElement.addEventListener('mousemove', (event) => {
@@ -266,11 +303,13 @@ export default {
     z-index: 0;
     overflow: hidden;
 }
-body,html{
+
+body, html {
     height: 100%;
     width: 100%;
     margin: 0;
 }
+
 .drag {
     width: 300px;
     height: 72vh;
@@ -308,7 +347,7 @@ body,html{
     height: 200px;
     position: absolute;
     background-color: transparent;
-    outline-style: dashed ;
+    outline-style: dashed;
     outline-width: 1px;
     top: 0;
     left: 0;
@@ -317,7 +356,7 @@ body,html{
     transform-origin: left top;
 }
 
-.app-move{
+.app-move {
     background-color: #007fd4;
 }
 

@@ -5,7 +5,6 @@
         :class="{
             'co-re_box-home-is-move': !!mouseAction,
             'co-re_box-home-check': boxActive,
-            'co-re_box-home-active': !lock,
             'co-re_box-home-animal': !disableAnimal && !mouseAction && !useKey && openAnimal
         }"
         tabindex="0"
@@ -158,13 +157,13 @@ export default {
             top: 0,
             left: 0,
             height: 50,
-            compId: uId(),
             boxActive: false,
             reloadDe: debounce(this.reload, 40),
             lastMouse: null,
             parentEle: null,
             inCoRePage: false,
-            resizeObserver: null
+            resizeObserver: null,
+            isInContainer: false
         }
     },
     methods: {
@@ -241,25 +240,39 @@ export default {
                 this.setHeight()
             }
         },
-        mouseDownEvent(event, type) {
-            if (this.lock || event.button !== 0) return
-            this.mouseAction = type;
-            if (this.mouseAction) {
-                event.stopPropagation();
+        /**
+         *
+         * @param $event {MouseEvent}
+         * @param type {string}
+         */
+        mouseDownEvent($event, type) {
+            if (this.lock || $event.button !== 0) return
+            this.isInContainer = true;
+            if ($event.ctrlKey || $event.metaKey) {
+                this.mouseAction = '';
+                if (this.boxActive) {
+                    this.setBoxUnActive();
+                } else {
+                    this.setBoxActive();
+                }
+            } else {
+                this.mouseAction = type;
                 this.setBoxActive();
-                this.lastMouse = event;
+            }
+            if (this.mouseAction) {
+                this.lastMouse = $event;
                 // 记录尺寸和位置大小
                 this.sizeData = {
-                    lDis: event.pageX,
-                    tDis: event.pageY,
+                    lDis: $event.pageX,
+                    tDis: $event.pageY,
                     oldLeft: this.left,
                     oldTop: this.top,
                     oldHeight: this.height,
                     oldWidth: this.width,
                 };
                 window.addEventListener('mousemove', this.boxMove);
-                window.addEventListener('mouseup', this.mouseCancel);
             }
+            window.addEventListener('mouseup', this.mouseCancel);
         },
         emitResizeData(eventType) {
             return {
@@ -270,7 +283,6 @@ export default {
                     t: this.top
                 },
                 boxId: this.boxId,
-                compId: this.compId,
                 type: this.mouseAction,
                 eventType
             }
@@ -323,9 +335,6 @@ export default {
                 width: this.width
             }
         },
-        setActive(val) {
-            this.boxActive = val;
-        },
         actionL(val) {
             let needW = this.sizeData.oldWidth - val;
             let needL = this.sizeData.oldLeft + val;
@@ -375,6 +384,7 @@ export default {
             }
         },
         mouseCancel() {
+            this.isInContainer = false;
             if (this.mouseAction && !this.lock) {
                 this.mouseAction = '';
                 this.$emit('update:w', this.width);
@@ -383,26 +393,39 @@ export default {
                 this.$emit('update:t', this.top);
                 this.$emit('resized', this.emitResizeData('mouse'));
                 window.removeEventListener('mousemove', this.boxMove);
-                window.removeEventListener('mouseup', this.mouseCancel);
             }
+            window.removeEventListener('mouseup', this.mouseCancel);
         },
-        // 1、盒子锁定立即执行。2、监听document点击
-        mouseDownOther() {
-            if (!this.lock) {
-                this.setBoxUnActive();
+        /**
+         * 1、盒子锁定立即执行。2、监听document点击
+         * @param $event {MouseEvent}
+         */
+        mouseDownOther($event) {
+            if (!this.lock && !this.isInContainer) {
+                if(!$event.ctrlKey && !$event.metaKey){
+                    this.setBoxUnActive();
+                }
             }
         },
         setBoxUnActive() {
             if (this.boxActive) {
                 this.boxActive = false;
-                this.$emit('uncheck-box', this.ids)
+                this.$emit('uncheck-box', this.boxId)
             }
+            this.isInContainer = false;
         },
         setBoxActive() {
             if (!this.boxActive) {
                 this.boxActive = true;
-                this.$emit('check-box', this.ids);
+                this.$emit('check-box', this.boxId);
             }
+        },
+        /**
+         *
+         * @param val {boolean}
+         */
+        setActive(val) {
+            this.boxActive = val;
         },
         setTransform() {
             this.$el.style.setProperty('transform', `translate(${this.left}px, ${this.top}px)`);
@@ -433,7 +456,6 @@ export default {
         },
         mouseMoveCall(event) {
             if (this.moveHand) {
-                event.stopPropagation();
                 this.mouseDownEvent(event, 'move')
             }
         },
@@ -505,12 +527,6 @@ export default {
         willChange() {
             return this.mouseAction ? 'transform' : 'auto'
         },
-        ids() {
-            return {
-                boxId: this.boxId,
-                compId: this.compId,
-            }
-        },
         tipsColorIns() {
             return verifyColor(this.tipsColor.toString(), '#007fd4')
         },
@@ -525,6 +541,9 @@ export default {
         },
         trickArr() {
             return this.trickList.filter(i => MOVE_HANDLER.includes(i));
+        },
+        mouseDownElement() {
+
         }
     },
     watch: {

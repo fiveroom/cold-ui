@@ -4,6 +4,7 @@
          @keydown="boxKeyDown($event)"
          @keyup="boxKeyUp($event)"
          @mousedown="mouseDownCall"
+         ref="pageHome"
     >
         <div class="co-re_page-body" ref="body" :style="scrollStyle">
             <slot></slot>
@@ -45,6 +46,7 @@ export default {
             type: Boolean,
             default: true
         },
+        // 属性重写
         rectPropRewrite: {
             type: Object,
             default: () => ({
@@ -58,6 +60,7 @@ export default {
             type: Number,
             default: 1
         },
+        // 贴合最小间距
         mouseVerifyDis: {
             type: Number,
             default: 3
@@ -112,7 +115,7 @@ export default {
             checkBoxes: new Set(),
             keyDownData: {},
             controlStu: false,
-            boxArrBack: null,
+            boxArrBack: [],
             clearStandDe: debounce(this.clearStand, 1000),
             ctx: null,
             toolConfigIns: {},
@@ -128,7 +131,7 @@ export default {
         boxArr: {
             immediate: true,
             handler() {
-                this.initResizeBox()
+                this.recordBoxArr()
             }
         }
     },
@@ -184,7 +187,7 @@ export default {
             this.initBoxSize(this.boxRect);
             this.initCtx();
         },
-        /**\
+        /**
          *
          * @param rect {{left: number, width: number, height: number, top: number}}
          */
@@ -196,64 +199,36 @@ export default {
             this.box.xV = rect.left + window.scrollX + this.$el.clientLeft;
             this.box.yV = rect.top + window.scrollY + this.$el.clientTop;
         },
-        initResizeBox() {
+        recordBoxArr() {
             this.boxArrObj = {};
-            if (this.idPropName) {
-                this.boxArrBack = this.boxArr.map(i => {
-                    let proxyObj = this.proxyRect(i);
-                    i[this.idPropName] && (this.boxArrObj[i[this.idPropName]] = proxyObj);
-                    return proxyObj
-                })
-            }
+            this.compIds = {};
+            this.boxArrBack = this.boxArr.map(i => this.boxArrObj[i[this.idPropName]] = this.proxyRect(i));
             this.$nextTick(() => {
                 const slots = this.$slots.default;
                 this.ctx.clearRect(0, 0, this.box.width, this.box.height);
-                let hasKeys = Object.keys(this.compIds);
-                let newKeys = [];
                 slots?.forEach(item => {
                     const comp = item.componentInstance;
                     if (comp && comp.$options.name === 'coReBox') {
-                        newKeys.push(comp.compId);
-                        if (this.compIds[comp.compId]) return;
-                        this.compIds[comp.compId] = comp;
-                        if (this.toolConfigIns.useStand) {
-                            comp.$on('resizing', this.resizeEvent.bind(this));
-                            comp.$on('resized', this.resizeStop.bind(this));
-                        }
-                        if (this.toolConfigIns.useKeyControl) {
-                            comp.$on('check-box', this.activeBoxCall.bind(this));
-                            comp.$on('uncheck-box', this.unActiveBoxCall.bind(this));
-                        }
-                    }
-                })
-                hasKeys.forEach(i => {
-                    if (!newKeys.includes(i)) {
-                        Reflect.deleteProperty(this.compIds, i);
+                        this.compIds[comp.boxId] = comp;
+                        comp.$off('resizing', this.resizeEvent);
+                        comp.$on('resizing', this.resizeEvent);
+                        comp.$off('resized', this.resizeStop);
+                        comp.$on('resized', this.resizeStop);
+                        comp.$off('check-box', this.activeBoxCall);
+                        comp.$on('check-box', this.activeBoxCall);
+                        comp.$off('uncheck-box', this.unActiveBoxCall);
+                        comp.$on('uncheck-box', this.unActiveBoxCall);
                     }
                 })
             })
         },
-        activeBoxCall({compId}) {
-            if (this.controlStu) {
-                let stu = this.checkBoxes.has(compId);
-                if (this.checkBoxes.has(compId)) {
-                    this.checkBoxes.delete(compId);
-                } else {
-                    this.checkBoxes.add(compId);
-                }
-                this.checkBoxes[stu ? 'delete' : 'add'](compId);
-                this.compIds[compId].setActive(!stu)
-            } else {
-                this.checkBoxes.forEach(i => {
-                    this.compIds[i]?.setActive(false)
-                })
-                this.checkBoxes.clear()
-                this.checkBoxes.add(compId);
-                this.compIds[compId].setActive(true)
-            }
+        activeBoxCall(boxId) {
+            this.checkBoxes.add(boxId);
+            this.groupBindEvent([...this.checkBoxes]);
         },
-        unActiveBoxCall({compId}) {
-            this.checkBoxes.delete(compId);
+        unActiveBoxCall(boxId) {
+            this.checkBoxes.delete(boxId);
+            this.groupBindEvent([...this.checkBoxes]);
         },
         boxKeyDown(event) {
             if (!this.toolConfigIns.useKeyControl) return;
@@ -293,9 +268,9 @@ export default {
         resizeStop() {
             this.clearStand()
         },
-        resizeEvent: throttle(function ({rect, boxId, compId, type, eventType}) {
+        resizeEvent: throttle(function ({rect, boxId, type, eventType}) {
             let diffData = this.alignBoxTwo(rect, boxId, eventType);
-            let alignArr = this.setAlignBoxTips(diffData, {rect, boxId, compId, type});
+            let alignArr = this.setAlignBoxTips(diffData, {rect, boxId, type});
             this.ctx.clearRect(0, 0, this.box.width, this.box.height);
             this.setCtxColor();
             alignArr.forEach(item => this.drawLine(item, 'align'));
@@ -368,7 +343,7 @@ export default {
                 diffTObj: diffTArr.sort((a, b) => a.disX - b.disX)[0]
             }
         },
-        setAlignBoxTips({diffLObj, diffTObj}, {rect, compId, type}) {
+        setAlignBoxTips({diffLObj, diffTObj}, {rect, boxId, type}) {
             let alignArr = [];
             if (diffLObj) {
                 const obj = diffLObj.obj;
@@ -386,8 +361,8 @@ export default {
                                 val = item.val - rect.w;
                         }
                         rect.l = val;
-                        this.compIds[compId].left = val;
-                        this.compIds[compId].setTransform(this.compIds[compId].left, this.compIds[compId].top);
+                        this.compIds[boxId].left = val;
+                        this.compIds[boxId].setTransform(this.compIds[boxId].left, this.compIds[boxId].top);
                     }
                     let xPoint = Math.floor(item.val);
                     let yPoint0 = Math.floor(Math.min(obj.t, rect.t) - this.alignTipsWidth);
@@ -411,8 +386,8 @@ export default {
                                 val = item.val - rect.h;
                         }
                         rect.t = val;
-                        this.compIds[compId].top = val;
-                        this.compIds[compId].setTransform(this.compIds[compId].left, this.compIds[compId].top);
+                        this.compIds[boxId].top = val;
+                        this.compIds[boxId].setTransform(this.compIds[boxId].left, this.compIds[boxId].top);
                     }
                     let yPoint = Math.floor(item.val);
                     let xPoint0 = Math.floor(Math.min(obj.l, rect.l) - this.alignTipsWidth);
@@ -622,7 +597,7 @@ export default {
          * @param $event {MouseEvent}
          */
         mouseDownCall($event) {
-            if ($event.button === 0) {
+            if ($event.button === 0 && $event.target === this.$refs.body) {
                 this.mouseDownStatus = true;
                 this.startMouseEvent = $event;
                 window.addEventListener('mousemove', this.mouseMoveCall)
@@ -658,20 +633,44 @@ export default {
             )
         },
         mouseupCall() {
+            this.judgeGroupBox();
+            this.$refs.group.setAttribute('style', '');
             this.mouseDownStatus = false;
             this.startMouseEvent = null;
-            this.$refs.group.setAttribute('style', '');
+            this.endMouseEvent = null;
             window.removeEventListener('mousemove', this.mouseMoveCall);
             window.removeEventListener('mouseup', this.mouseupCall);
-            this.judgeGroupBox();
         },
-        judgeGroupBox(){
-            const extendY = this.allowScroll ? this.$refs.body.scrollTop : 0;
-            let startX = this.startMouseEvent.pageX - this.boxRect.left,
-                startY = this.startMouseEvent.pageY - this.boxRect.top + extendY,
-                endX = this.endMouseEvent.pageX - this.boxRect.left,
-                enxY = this.endMouseEvent.pageY - this.boxRect.top + extendY;
-        }
+        judgeGroupBox() {
+            if (this.startMouseEvent && this.endMouseEvent) {
+                const extendY = this.allowScroll ? this.$refs.body.scrollTop : 0;
+                let startX = this.startMouseEvent.pageX - this.boxRect.left,
+                    startY = this.startMouseEvent.pageY - this.boxRect.top + extendY,
+                    endX = this.endMouseEvent.pageX - this.boxRect.left,
+                    endY = this.endMouseEvent.pageY - this.boxRect.top + extendY;
+                if (startX > endX) {
+                    [startX, endX] = [endX, startX];
+                }
+                if (startY > endY) {
+                    [startY, endY] = [endY, startY];
+                }
+                const includeBox = this.boxArrBack.filter(item => {
+                    const {h: height, w: width, t: itemStartY, l: itemStartX} = item;
+                    let itemEndX = itemStartX + width, itemEndY = itemStartY + height;
+                    return !this.compIds[item[this.idPropName]].lock && (itemStartX >= startX && itemStartX < endX || itemEndX <= endX && itemEndX > startX)
+                        && (itemStartY >= startY && itemStartY < endY || itemEndY <= endY && itemEndY > startY)
+                });
+                const ids = includeBox.map(i => i[this.idPropName]);
+                ids.forEach(boxId => {
+                    this.compIds[boxId].setActive(true);
+                    this.checkBoxes.add(boxId);
+                });
+                this.groupBindEvent(ids);
+            }
+        },
+        groupBindEvent: debounce(function (ids) {
+            this.$emit('groupBind', ids);
+        }, 100)
     }
 }
 </script>
